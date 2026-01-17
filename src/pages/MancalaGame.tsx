@@ -255,6 +255,9 @@ export default function MancalaGame() {
     // Only re-run when game finishes (don't include showVictory to avoid reopening dialog)
     gameState.status,
     gameState.moveHistory.length, // Use as unique game identifier
+    gameState.board.pits,
+    gameState.mode,
+    gameState.winner,
     characterId, // Include characterId so Bentley stats are tracked correctly
     character, // Include character for victory announcements
     bentleyStats, // Include bentleyStats for API calls
@@ -269,6 +272,7 @@ export default function MancalaGame() {
     setAriaMessage,
     setAriaPriority,
     highestCaptureThisGame,
+    maxDeficitThisGame,
   ])
 
   const handleNewGame = () => {
@@ -370,14 +374,6 @@ export default function MancalaGame() {
     isAIThinking: isAIThinking || isAnimating,
     gameStatus: gameState.status,
   })
-
-  // Sync help dialog state with keyboard controls
-  useEffect(() => {
-    if (showKeyboardHelp) {
-      setShowKeyboardHelp(false)
-      // The dialog state will be controlled by our local state
-    }
-  }, [showKeyboardHelp])
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-rose-50 px-4 py-8 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
