@@ -2,6 +2,7 @@
   "name": "mancala-game",
   "private": true,
   "version": "1.0.0",
+  "license": "MIT",
   "description": "A classic African strategy board game built with React, TypeScript, and AI opponents",
   "type": "module",
   "scripts": {
