@@ -6,6 +6,53 @@ type SoundEffect = 'pickup' | 'drop' | 'capture' | 'extraTurn' | 'victory' | 'de
 
 const MUTE_STORAGE_KEY = 'mancala_audio_muted'
 
+// Audio timing constants (in milliseconds)
+const AUDIO_TIMING = {
+  PICKUP_DELAY: 40,
+  CAPTURE_DELAY_1: 80,
+  CAPTURE_DELAY_2: 160,
+  EXTRA_TURN_DELAY_1: 80,
+  EXTRA_TURN_DELAY_2: 160,
+  VICTORY_DELAY_1: 120,
+  VICTORY_DELAY_2: 240,
+  VICTORY_DELAY_3: 360,
+  DEFEAT_DELAY_1: 150,
+  DEFEAT_DELAY_2: 300,
+  DROP_SEQUENCE_INTERVAL: 80,
+  DROP_SEQUENCE_MAX_SOUNDS: 8,
+} as const
+
+// Audio frequency constants (in Hz)
+const AUDIO_FREQUENCIES = {
+  PICKUP_1: 440,
+  PICKUP_2: 550,
+  DROP: 330,
+  CAPTURE_C5: 523,
+  CAPTURE_E5: 659,
+  CAPTURE_G5: 784,
+  EXTRA_TURN_E5: 659,
+  EXTRA_TURN_G5: 784,
+  EXTRA_TURN_C6: 1047,
+  VICTORY_C5: 523,
+  VICTORY_E5: 659,
+  VICTORY_G5: 784,
+  VICTORY_C6: 1047,
+  DEFEAT_G4: 392,
+  DEFEAT_E4: 330,
+  DEFEAT_C4: 262,
+  DROP_SEQUENCE_BASE: 330,
+  DROP_SEQUENCE_INCREMENT: 20,
+} as const
+
+// Audio volume constants
+const AUDIO_VOLUMES = {
+  DEFAULT: 0.3,
+  SOFT: 0.15,
+  MEDIUM: 0.25,
+  LOUD: 0.35,
+  DROP_SEQUENCE: 0.12,
+} as const
+
 /**
  * Get mute preference from localStorage
  */
@@ -24,8 +71,8 @@ function getMutePreference(): boolean {
 function saveMutePreference(muted: boolean): void {
   try {
     localStorage.setItem(MUTE_STORAGE_KEY, String(muted))
-  } catch (error) {
-    console.error('Error saving mute preference:', error)
+  } catch {
+    // Silent fail for localStorage errors - non-critical functionality
   }
 }
 
@@ -106,42 +153,42 @@ export function useGameAudio() {
       switch (effect) {
         case 'pickup':
           // Quick ascending chirp
-          createTone(ctx, 440, 0.1, 'triangle', 0.2)
-          setTimeout(() => createTone(ctx, 550, 0.08, 'triangle', 0.15), 40)
+          createTone(ctx, AUDIO_FREQUENCIES.PICKUP_1, 0.1, 'triangle', 0.2)
+          setTimeout(() => createTone(ctx, AUDIO_FREQUENCIES.PICKUP_2, 0.08, 'triangle', AUDIO_VOLUMES.SOFT), AUDIO_TIMING.PICKUP_DELAY)
           break
 
         case 'drop':
           // Short descending tone
-          createTone(ctx, 330, 0.08, 'sine', 0.15)
+          createTone(ctx, AUDIO_FREQUENCIES.DROP, 0.08, 'sine', AUDIO_VOLUMES.SOFT)
           break
 
         case 'capture':
           // Triumphant ascending sequence
-          createTone(ctx, 523, 0.1, 'square', 0.25) // C5
-          setTimeout(() => createTone(ctx, 659, 0.1, 'square', 0.25), 80) // E5
-          setTimeout(() => createTone(ctx, 784, 0.2, 'square', 0.3), 160) // G5
+          createTone(ctx, AUDIO_FREQUENCIES.CAPTURE_C5, 0.1, 'square', AUDIO_VOLUMES.MEDIUM)
+          setTimeout(() => createTone(ctx, AUDIO_FREQUENCIES.CAPTURE_E5, 0.1, 'square', AUDIO_VOLUMES.MEDIUM), AUDIO_TIMING.CAPTURE_DELAY_1)
+          setTimeout(() => createTone(ctx, AUDIO_FREQUENCIES.CAPTURE_G5, 0.2, 'square', AUDIO_VOLUMES.DEFAULT), AUDIO_TIMING.CAPTURE_DELAY_2)
           break
 
         case 'extraTurn':
           // Ascending chime
-          createTone(ctx, 659, 0.12, 'sine', 0.25) // E5
-          setTimeout(() => createTone(ctx, 784, 0.15, 'sine', 0.3), 80) // G5
-          setTimeout(() => createTone(ctx, 1047, 0.2, 'sine', 0.25), 160) // C6
+          createTone(ctx, AUDIO_FREQUENCIES.EXTRA_TURN_E5, 0.12, 'sine', AUDIO_VOLUMES.MEDIUM)
+          setTimeout(() => createTone(ctx, AUDIO_FREQUENCIES.EXTRA_TURN_G5, 0.15, 'sine', AUDIO_VOLUMES.DEFAULT), AUDIO_TIMING.EXTRA_TURN_DELAY_1)
+          setTimeout(() => createTone(ctx, AUDIO_FREQUENCIES.EXTRA_TURN_C6, 0.2, 'sine', AUDIO_VOLUMES.MEDIUM), AUDIO_TIMING.EXTRA_TURN_DELAY_2)
           break
 
         case 'victory':
           // Victory fanfare
-          createTone(ctx, 523, 0.15, 'sawtooth', 0.3) // C5
-          setTimeout(() => createTone(ctx, 659, 0.15, 'sawtooth', 0.3), 120) // E5
-          setTimeout(() => createTone(ctx, 784, 0.15, 'sawtooth', 0.3), 240) // G5
-          setTimeout(() => createTone(ctx, 1047, 0.4, 'sawtooth', 0.35), 360) // C6
+          createTone(ctx, AUDIO_FREQUENCIES.VICTORY_C5, 0.15, 'sawtooth', AUDIO_VOLUMES.DEFAULT)
+          setTimeout(() => createTone(ctx, AUDIO_FREQUENCIES.VICTORY_E5, 0.15, 'sawtooth', AUDIO_VOLUMES.DEFAULT), AUDIO_TIMING.VICTORY_DELAY_1)
+          setTimeout(() => createTone(ctx, AUDIO_FREQUENCIES.VICTORY_G5, 0.15, 'sawtooth', AUDIO_VOLUMES.DEFAULT), AUDIO_TIMING.VICTORY_DELAY_2)
+          setTimeout(() => createTone(ctx, AUDIO_FREQUENCIES.VICTORY_C6, 0.4, 'sawtooth', AUDIO_VOLUMES.LOUD), AUDIO_TIMING.VICTORY_DELAY_3)
           break
 
         case 'defeat':
           // Descending disappointment
-          createTone(ctx, 392, 0.2, 'triangle', 0.3) // G4
-          setTimeout(() => createTone(ctx, 330, 0.2, 'triangle', 0.3), 150) // E4
-          setTimeout(() => createTone(ctx, 262, 0.3, 'triangle', 0.25), 300) // C4
+          createTone(ctx, AUDIO_FREQUENCIES.DEFEAT_G4, 0.2, 'triangle', AUDIO_VOLUMES.DEFAULT)
+          setTimeout(() => createTone(ctx, AUDIO_FREQUENCIES.DEFEAT_E4, 0.2, 'triangle', AUDIO_VOLUMES.DEFAULT), AUDIO_TIMING.DEFEAT_DELAY_1)
+          setTimeout(() => createTone(ctx, AUDIO_FREQUENCIES.DEFEAT_C4, 0.3, 'triangle', AUDIO_VOLUMES.MEDIUM), AUDIO_TIMING.DEFEAT_DELAY_2)
           break
       }
     },
@@ -161,10 +208,10 @@ export function useGameAudio() {
       }
 
       // Play drop sounds with slight delay between each
-      for (let i = 0; i < Math.min(count, 8); i++) {
+      for (let i = 0; i < Math.min(count, AUDIO_TIMING.DROP_SEQUENCE_MAX_SOUNDS); i++) {
         setTimeout(() => {
-          createTone(ctx, 330 + i * 20, 0.06, 'sine', 0.12)
-        }, i * 80)
+          createTone(ctx, AUDIO_FREQUENCIES.DROP_SEQUENCE_BASE + i * AUDIO_FREQUENCIES.DROP_SEQUENCE_INCREMENT, 0.06, 'sine', AUDIO_VOLUMES.DROP_SEQUENCE)
+        }, i * AUDIO_TIMING.DROP_SEQUENCE_INTERVAL)
       }
     },
     [isMuted]

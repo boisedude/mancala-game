@@ -266,7 +266,7 @@
 - [ ] Test production build locally
 - [ ] Generate source maps
 - [ ] Run Lighthouse audit
-- [ ] Update CLAUDE.md with new features
+- [ ] Update documentation with new features
 
 ---
 

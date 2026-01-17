@@ -42,7 +42,6 @@ export function useBentleyStats() {
         throw new Error('Invalid response from API');
       }
     } catch (err) {
-      console.error('Error fetching Bentley stats:', err);
       setError(err instanceof Error ? err.message : 'Unknown error');
 
       // Set mock data for development/testing
@@ -63,8 +62,8 @@ export function useBentleyStats() {
     try {
       await fetch('https://www.mcooper.com/api/bentley-win.php');
       await fetchStats(); // Refresh stats
-    } catch (err) {
-      console.error('Error recording win:', err);
+    } catch {
+      // Silent fail for API errors - non-critical functionality
     }
   };
 
@@ -72,8 +71,8 @@ export function useBentleyStats() {
     try {
       await fetch('https://www.mcooper.com/api/bentley-loss.php');
       await fetchStats(); // Refresh stats
-    } catch (err) {
-      console.error('Error recording loss:', err);
+    } catch {
+      // Silent fail for API errors - non-critical functionality
     }
   };
 

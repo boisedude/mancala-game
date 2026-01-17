@@ -46,7 +46,7 @@ export function SettingsDialog({
         <div className="space-y-6 py-4">
           {/* Animation Speed */}
           <div className="space-y-2">
-            <label className="text-sm font-semibold">Animation Speed</label>
+            <label htmlFor="animation-speed" className="text-sm font-semibold">Animation Speed</label>
             <p className="text-xs text-muted-foreground">
               Control how fast stones move during gameplay
             </p>
@@ -56,7 +56,7 @@ export function SettingsDialog({
                 onUpdateSetting('animationSpeed', value)
               }
             >
-              <SelectTrigger className="w-full">
+              <SelectTrigger id="animation-speed" className="w-full" aria-label="Select animation speed">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -90,7 +90,7 @@ export function SettingsDialog({
 
           {/* Move Hints */}
           <div className="space-y-2">
-            <label className="text-sm font-semibold">Move Hints</label>
+            <label htmlFor="move-hints" className="text-sm font-semibold">Move Hints</label>
             <p className="text-xs text-muted-foreground">
               Get suggestions for your next move (coming soon)
             </p>
@@ -100,7 +100,7 @@ export function SettingsDialog({
                 onUpdateSetting('showMoveHints', value)
               }
             >
-              <SelectTrigger className="w-full">
+              <SelectTrigger id="move-hints" className="w-full" aria-label="Select hint level">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -117,7 +117,7 @@ export function SettingsDialog({
 
             <label className="flex items-center justify-between cursor-pointer group">
               <div className="space-y-0.5">
-                <div className="text-sm font-medium">Game Statistics</div>
+                <div className="text-sm font-medium" id="stats-label">Game Statistics</div>
                 <div className="text-xs text-muted-foreground">
                   Show real-time stats during gameplay
                 </div>
@@ -128,6 +128,9 @@ export function SettingsDialog({
                   className="peer sr-only"
                   checked={settings.showGameStats}
                   onChange={e => onUpdateSetting('showGameStats', e.target.checked)}
+                  aria-labelledby="stats-label"
+                  role="switch"
+                  aria-checked={settings.showGameStats}
                 />
                 <div className="h-6 w-11 rounded-full bg-muted peer-checked:bg-primary transition-colors" />
                 <div className="absolute left-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform peer-checked:translate-x-5" />
@@ -136,7 +139,7 @@ export function SettingsDialog({
 
             <label className="flex items-center justify-between cursor-pointer group">
               <div className="space-y-0.5">
-                <div className="text-sm font-medium">Move History</div>
+                <div className="text-sm font-medium" id="history-label">Move History</div>
                 <div className="text-xs text-muted-foreground">
                   Show a timeline of all moves made
                 </div>
@@ -147,6 +150,9 @@ export function SettingsDialog({
                   className="peer sr-only"
                   checked={settings.showMoveHistory}
                   onChange={e => onUpdateSetting('showMoveHistory', e.target.checked)}
+                  aria-labelledby="history-label"
+                  role="switch"
+                  aria-checked={settings.showMoveHistory}
                 />
                 <div className="h-6 w-11 rounded-full bg-muted peer-checked:bg-primary transition-colors" />
                 <div className="absolute left-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform peer-checked:translate-x-5" />
@@ -155,7 +161,7 @@ export function SettingsDialog({
 
             <label className="flex items-center justify-between cursor-pointer group">
               <div className="space-y-0.5">
-                <div className="text-sm font-medium">Victory Celebrations</div>
+                <div className="text-sm font-medium" id="celebration-label">Victory Celebrations</div>
                 <div className="text-xs text-muted-foreground">
                   Show confetti and effects when you win
                 </div>
@@ -166,6 +172,9 @@ export function SettingsDialog({
                   className="peer sr-only"
                   checked={settings.showVictoryCelebration}
                   onChange={e => onUpdateSetting('showVictoryCelebration', e.target.checked)}
+                  aria-labelledby="celebration-label"
+                  role="switch"
+                  aria-checked={settings.showVictoryCelebration}
                 />
                 <div className="h-6 w-11 rounded-full bg-muted peer-checked:bg-primary transition-colors" />
                 <div className="absolute left-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform peer-checked:translate-x-5" />
@@ -174,7 +183,7 @@ export function SettingsDialog({
 
             <label className="flex items-center justify-between cursor-pointer group">
               <div className="space-y-0.5">
-                <div className="text-sm font-medium">Haptic Feedback (Mobile)</div>
+                <div className="text-sm font-medium" id="haptic-label">Haptic Feedback (Mobile)</div>
                 <div className="text-xs text-muted-foreground">
                   Vibrate on interactions (requires mobile device)
                 </div>
@@ -185,6 +194,9 @@ export function SettingsDialog({
                   className="peer sr-only"
                   checked={settings.hapticFeedback}
                   onChange={e => onUpdateSetting('hapticFeedback', e.target.checked)}
+                  aria-labelledby="haptic-label"
+                  role="switch"
+                  aria-checked={settings.hapticFeedback}
                 />
                 <div className="h-6 w-11 rounded-full bg-muted peer-checked:bg-primary transition-colors" />
                 <div className="absolute left-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform peer-checked:translate-x-5" />

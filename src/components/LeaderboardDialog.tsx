@@ -16,9 +16,7 @@ interface LeaderboardDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   stats: LeaderboardEntry
-  playerName: string
   achievements?: Achievement[]
-  onUpdateName: (name: string) => void
   onReset: () => void
   onShare: () => void
 }

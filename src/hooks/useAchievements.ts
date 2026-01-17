@@ -97,8 +97,8 @@ function loadAchievements(): Achievement[] {
 function saveAchievements(achievements: Achievement[]): void {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(achievements))
-  } catch (error) {
-    console.error('Error saving achievements:', error)
+  } catch {
+    // Silent fail for localStorage errors - non-critical functionality
   }
 }
 
@@ -135,8 +135,8 @@ function loadProgress(): AchievementProgress {
 function saveProgress(progress: AchievementProgress): void {
   try {
     localStorage.setItem(PROGRESS_KEY, JSON.stringify(progress))
-  } catch (error) {
-    console.error('Error saving achievement progress:', error)
+  } catch {
+    // Silent fail for localStorage errors - non-critical functionality
   }
 }
 
@@ -292,10 +292,10 @@ export function useAchievements() {
         }))
       }
 
-      // Reset extra turn chains for new game
+      // Reset extra turn chain for new game
       setProgress(prev => ({
         ...prev,
-        extraTurnChains: [],
+        currentExtraTurnChain: 0,
       }))
     },
     [unlockAchievement]

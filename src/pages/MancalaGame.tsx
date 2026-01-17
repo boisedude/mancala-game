@@ -667,9 +667,7 @@ export default function MancalaGame() {
         open={showLeaderboard}
         onOpenChange={setShowLeaderboard}
         stats={stats}
-        playerName={playerName}
         achievements={achievements}
-        onUpdateName={() => {}}
         onReset={resetStats}
         onShare={handleShare}
       />

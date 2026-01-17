@@ -24,9 +24,6 @@ dist-ssr
 *.sln
 *.sw?
 
-# Claude Code
-.claude/
-
 # Testing
 coverage
 .nyc_output

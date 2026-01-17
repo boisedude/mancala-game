@@ -47,10 +47,8 @@ function getLeaderboardFromStorage(): LeaderboardEntry | null {
       return parsed
     }
 
-    console.warn('Invalid leaderboard data in localStorage, resetting')
     return null
-  } catch (error) {
-    console.error('Error reading leaderboard:', error)
+  } catch {
     return null
   }
 }
@@ -61,8 +59,8 @@ function getLeaderboardFromStorage(): LeaderboardEntry | null {
 function saveLeaderboardToStorage(entry: LeaderboardEntry): void {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(entry))
-  } catch (error) {
-    console.error('Error saving leaderboard:', error)
+  } catch {
+    // Silent fail for localStorage errors - stats work for current session
   }
 }
 

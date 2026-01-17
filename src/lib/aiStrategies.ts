@@ -10,6 +10,27 @@ import {
   getPlayerStore,
 } from './mancalaRules'
 
+// AI Strategy Constants
+const AI_CONSTANTS = {
+  // Minimax search depth for hard AI
+  HARD_AI_DEPTH: 6,
+
+  // Easy AI scoring weights
+  EASY_STONE_GAIN_WEIGHT: 2,
+  EASY_EXTRA_TURN_BONUS: 10,
+  EASY_CAPTURE_MULTIPLIER: 3,
+  EASY_RANDOMNESS_FACTOR: 15,
+  EASY_EXTRA_TURN_NOTICE_CHANCE: 0.3,
+  EASY_CAPTURE_NOTICE_CHANCE: 0.3,
+
+  // Medium AI scoring weights
+  MEDIUM_EXTRA_TURN_BONUS: 50,
+  MEDIUM_CAPTURE_MULTIPLIER: 10,
+
+  // Board evaluation weights
+  MOBILITY_WEIGHT: 0.5,
+} as const
+
 /**
  * Selects best move for AI based on difficulty
  */
@@ -46,20 +67,20 @@ function selectRandomMove(validMoves: number[], board: Board, player: Player): n
 
     // Slightly prefer moves that add to store
     const stoneGain = newBoard.pits[playerStore] - board.pits[playerStore]
-    score += stoneGain * 2
+    score += stoneGain * AI_CONSTANTS.EASY_STONE_GAIN_WEIGHT
 
-    // 30% chance to notice and take extra turns
-    if (moveInfo.extraTurn && Math.random() < 0.3) {
-      score += 10
+    // Chance to notice and take extra turns
+    if (moveInfo.extraTurn && Math.random() < AI_CONSTANTS.EASY_EXTRA_TURN_NOTICE_CHANCE) {
+      score += AI_CONSTANTS.EASY_EXTRA_TURN_BONUS
     }
 
-    // 30% chance to notice and take captures
-    if (moveInfo.capturedStones && Math.random() < 0.3) {
-      score += moveInfo.capturedStones * 3
+    // Chance to notice and take captures
+    if (moveInfo.capturedStones && Math.random() < AI_CONSTANTS.EASY_CAPTURE_NOTICE_CHANCE) {
+      score += moveInfo.capturedStones * AI_CONSTANTS.EASY_CAPTURE_MULTIPLIER
     }
 
     // Add significant randomness
-    score += Math.random() * 15
+    score += Math.random() * AI_CONSTANTS.EASY_RANDOMNESS_FACTOR
 
     return { move, score }
   })
@@ -85,12 +106,12 @@ function selectGreedyMove(board: Board, player: Player, validMoves: number[]): n
 
     // Prioritize extra turns
     if (moveInfo.extraTurn) {
-      score += 50
+      score += AI_CONSTANTS.MEDIUM_EXTRA_TURN_BONUS
     }
 
     // Prioritize captures
     if (moveInfo.capturedStones) {
-      score += moveInfo.capturedStones * 10
+      score += moveInfo.capturedStones * AI_CONSTANTS.MEDIUM_CAPTURE_MULTIPLIER
     }
 
     // Consider immediate stone gain
@@ -110,7 +131,6 @@ function selectGreedyMove(board: Board, player: Player, validMoves: number[]): n
  * Hard AI: Minimax with alpha-beta pruning (limited depth)
  */
 function selectMinimaxMove(board: Board, player: Player, validMoves: number[]): number {
-  const MAX_DEPTH = 6 // Adjust for performance vs. strength
   let bestMove = validMoves[0]
   let bestValue = -Infinity
 
@@ -119,8 +139,8 @@ function selectMinimaxMove(board: Board, player: Player, validMoves: number[]): 
 
     // If extra turn, same player goes again (max node)
     const value = moveInfo.extraTurn
-      ? minimax(newBoard, player, player, MAX_DEPTH - 1, -Infinity, Infinity, true)
-      : minimax(newBoard, player, player === 1 ? 2 : 1, MAX_DEPTH - 1, -Infinity, Infinity, false)
+      ? minimax(newBoard, player, player, AI_CONSTANTS.HARD_AI_DEPTH - 1, -Infinity, Infinity, true)
+      : minimax(newBoard, player, player === 1 ? 2 : 1, AI_CONSTANTS.HARD_AI_DEPTH - 1, -Infinity, Infinity, false)
 
     if (value > bestValue) {
       bestValue = value
@@ -214,7 +234,7 @@ function evaluateBoard(board: Board, aiPlayer: Player): number {
     0
   )
 
-  const mobilityScore = (aiPitStones - opponentPitStones) * 0.5
+  const mobilityScore = (aiPitStones - opponentPitStones) * AI_CONSTANTS.MOBILITY_WEIGHT
 
   return baseScore + mobilityScore
 }

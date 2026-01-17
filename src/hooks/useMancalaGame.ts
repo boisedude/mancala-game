@@ -12,6 +12,16 @@ import {
 } from '@/lib/mancalaRules'
 import { selectAIMove } from '@/lib/aiStrategies'
 
+// AI thinking time constants (in milliseconds)
+const AI_THINKING_TIME = {
+  EASY_BASE: 400,
+  EASY_VARIANCE: 200,
+  MEDIUM_BASE: 700,
+  MEDIUM_VARIANCE: 300,
+  HARD_BASE: 1200,
+  HARD_VARIANCE: 400,
+} as const
+
 export function useMancalaGame(animationDelayMs: number = 150) {
   const [gameState, setGameState] = useState<GameState>({
     board: createInitialBoard(),
@@ -163,8 +173,8 @@ export function useMancalaGame(animationDelayMs: number = 150) {
                 undoState: savedUndoState,
               }
             })
-          } catch (error) {
-            console.error('Error finalizing animation:', error)
+          } catch {
+            // Animation cleanup on error - reset state
             setIsAnimating(false)
             animationTimeoutsRef.current = []
           }
@@ -275,9 +285,9 @@ export function useMancalaGame(animationDelayMs: number = 150) {
 
       // Variable thinking time based on difficulty
       const thinkingTime = {
-        easy: 400 + Math.random() * 200, // 400-600ms
-        medium: 700 + Math.random() * 300, // 700-1000ms
-        hard: 1200 + Math.random() * 400, // 1200-1600ms
+        easy: AI_THINKING_TIME.EASY_BASE + Math.random() * AI_THINKING_TIME.EASY_VARIANCE,
+        medium: AI_THINKING_TIME.MEDIUM_BASE + Math.random() * AI_THINKING_TIME.MEDIUM_VARIANCE,
+        hard: AI_THINKING_TIME.HARD_BASE + Math.random() * AI_THINKING_TIME.HARD_VARIANCE,
       }[gameState.difficulty]
 
       const timeout = setTimeout(() => {

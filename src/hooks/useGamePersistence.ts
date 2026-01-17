@@ -76,8 +76,8 @@ export function useGamePersistence() {
 
       try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(savedGame))
-      } catch (error) {
-        console.error('Failed to save game:', error)
+      } catch {
+        // Silent fail for localStorage errors - game continues without persistence
       }
     },
     []
@@ -95,15 +95,13 @@ export function useGamePersistence() {
 
       // Comprehensive validation of saved game structure
       if (!isValidSavedGame(parsed)) {
-        console.warn('Invalid saved game data, clearing storage')
         localStorage.removeItem(STORAGE_KEY)
         return null
       }
 
       return parsed
-    } catch (error) {
-      console.error('Failed to load game:', error)
-      // Clear corrupted data
+    } catch {
+      // Clear corrupted data silently
       try {
         localStorage.removeItem(STORAGE_KEY)
       } catch {
@@ -126,8 +124,8 @@ export function useGamePersistence() {
   const clearSavedGame = useCallback(() => {
     try {
       localStorage.removeItem(STORAGE_KEY)
-    } catch (error) {
-      console.error('Failed to clear saved game:', error)
+    } catch {
+      // Silent fail for localStorage errors - non-critical
     }
   }, [])
 

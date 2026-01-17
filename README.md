@@ -170,8 +170,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 Created by M. Cooper for [www.mcooper.com](https://www.mcooper.com)
 
-Built with assistance from [Claude](https://claude.ai)
-
 ---
 
 **Enjoy the game!** If you find this project useful, please consider giving it a star on GitHub.

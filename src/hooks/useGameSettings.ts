@@ -41,8 +41,8 @@ export function useGameSettings() {
         const parsed = JSON.parse(stored)
         return { ...DEFAULT_SETTINGS, ...parsed }
       }
-    } catch (error) {
-      console.error('Failed to load settings:', error)
+    } catch {
+      // Fall through to return default settings
     }
     return DEFAULT_SETTINGS
   })
@@ -51,8 +51,8 @@ export function useGameSettings() {
   useEffect(() => {
     try {
       localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(settings))
-    } catch (error) {
-      console.error('Failed to save settings:', error)
+    } catch {
+      // Silent fail for localStorage errors - settings work for current session
     }
   }, [settings])
 
