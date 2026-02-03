@@ -2,8 +2,7 @@
 
 import { useCallback } from 'react'
 import type { GameState } from '@/types/mancala.types'
-
-const STORAGE_KEY = 'mancala_saved_game'
+import { STORAGE_KEYS } from '@/lib/storageKeys'
 
 export interface SavedGame {
   gameState: GameState
@@ -75,7 +74,7 @@ export function useGamePersistence() {
       }
 
       try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(savedGame))
+        localStorage.setItem(STORAGE_KEYS.SAVED_GAME, JSON.stringify(savedGame))
       } catch {
         // Silent fail for localStorage errors - game continues without persistence
       }
@@ -88,14 +87,14 @@ export function useGamePersistence() {
    */
   const loadGame = useCallback((): SavedGame | null => {
     try {
-      const saved = localStorage.getItem(STORAGE_KEY)
+      const saved = localStorage.getItem(STORAGE_KEYS.SAVED_GAME)
       if (!saved) return null
 
       const parsed = JSON.parse(saved)
 
       // Comprehensive validation of saved game structure
       if (!isValidSavedGame(parsed)) {
-        localStorage.removeItem(STORAGE_KEY)
+        localStorage.removeItem(STORAGE_KEYS.SAVED_GAME)
         return null
       }
 
@@ -103,7 +102,7 @@ export function useGamePersistence() {
     } catch {
       // Clear corrupted data silently
       try {
-        localStorage.removeItem(STORAGE_KEY)
+        localStorage.removeItem(STORAGE_KEYS.SAVED_GAME)
       } catch {
         // Ignore cleanup errors
       }
@@ -112,18 +111,11 @@ export function useGamePersistence() {
   }, [])
 
   /**
-   * Check if a saved game exists
-   */
-  const hasSavedGame = useCallback((): boolean => {
-    return loadGame() !== null
-  }, [loadGame])
-
-  /**
    * Clear saved game from localStorage
    */
   const clearSavedGame = useCallback(() => {
     try {
-      localStorage.removeItem(STORAGE_KEY)
+      localStorage.removeItem(STORAGE_KEYS.SAVED_GAME)
     } catch {
       // Silent fail for localStorage errors - non-critical
     }
@@ -136,20 +128,10 @@ export function useGamePersistence() {
     clearSavedGame()
   }, [clearSavedGame])
 
-  /**
-   * Resume game - returns the saved game and keeps it in storage
-   * Caller should clear it after successfully loading
-   */
-  const resumeGame = useCallback((): SavedGame | null => {
-    return loadGame()
-  }, [loadGame])
-
   return {
     saveGame,
     loadGame,
-    hasSavedGame,
     clearSavedGame,
     abandonGame,
-    resumeGame,
   }
 }

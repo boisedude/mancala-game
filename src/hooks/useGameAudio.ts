@@ -1,10 +1,9 @@
 // Custom hook for managing Mancala game audio
 
 import { useCallback, useEffect, useState, useRef } from 'react'
+import { STORAGE_KEYS } from '@/lib/storageKeys'
 
 type SoundEffect = 'pickup' | 'drop' | 'capture' | 'extraTurn' | 'victory' | 'defeat'
-
-const MUTE_STORAGE_KEY = 'mancala_audio_muted'
 
 // Audio timing constants (in milliseconds)
 const AUDIO_TIMING = {
@@ -18,8 +17,6 @@ const AUDIO_TIMING = {
   VICTORY_DELAY_3: 360,
   DEFEAT_DELAY_1: 150,
   DEFEAT_DELAY_2: 300,
-  DROP_SEQUENCE_INTERVAL: 80,
-  DROP_SEQUENCE_MAX_SOUNDS: 8,
 } as const
 
 // Audio frequency constants (in Hz)
@@ -40,8 +37,6 @@ const AUDIO_FREQUENCIES = {
   DEFEAT_G4: 392,
   DEFEAT_E4: 330,
   DEFEAT_C4: 262,
-  DROP_SEQUENCE_BASE: 330,
-  DROP_SEQUENCE_INCREMENT: 20,
 } as const
 
 // Audio volume constants
@@ -50,7 +45,6 @@ const AUDIO_VOLUMES = {
   SOFT: 0.15,
   MEDIUM: 0.25,
   LOUD: 0.35,
-  DROP_SEQUENCE: 0.12,
 } as const
 
 /**
@@ -58,7 +52,7 @@ const AUDIO_VOLUMES = {
  */
 function getMutePreference(): boolean {
   try {
-    const stored = localStorage.getItem(MUTE_STORAGE_KEY)
+    const stored = localStorage.getItem(STORAGE_KEYS.AUDIO_MUTED)
     return stored === 'true'
   } catch {
     return false
@@ -70,7 +64,7 @@ function getMutePreference(): boolean {
  */
 function saveMutePreference(muted: boolean): void {
   try {
-    localStorage.setItem(MUTE_STORAGE_KEY, String(muted))
+    localStorage.setItem(STORAGE_KEYS.AUDIO_MUTED, String(muted))
   } catch {
     // Silent fail for localStorage errors - non-critical functionality
   }
@@ -195,32 +189,9 @@ export function useGameAudio() {
     [isMuted]
   )
 
-  /**
-   * Play a sequence of drop sounds
-   */
-  const playDropSequence = useCallback(
-    (count: number) => {
-      if (isMuted || !audioContextRef.current) return
-
-      const ctx = audioContextRef.current
-      if (ctx.state === 'suspended') {
-        ctx.resume()
-      }
-
-      // Play drop sounds with slight delay between each
-      for (let i = 0; i < Math.min(count, AUDIO_TIMING.DROP_SEQUENCE_MAX_SOUNDS); i++) {
-        setTimeout(() => {
-          createTone(ctx, AUDIO_FREQUENCIES.DROP_SEQUENCE_BASE + i * AUDIO_FREQUENCIES.DROP_SEQUENCE_INCREMENT, 0.06, 'sine', AUDIO_VOLUMES.DROP_SEQUENCE)
-        }, i * AUDIO_TIMING.DROP_SEQUENCE_INTERVAL)
-      }
-    },
-    [isMuted]
-  )
-
   return {
     isMuted,
     toggleMute,
     playSound,
-    playDropSequence,
   }
 }

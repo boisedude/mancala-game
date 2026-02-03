@@ -49,18 +49,6 @@ export interface LeaderboardEntry {
   lastPlayed: number // timestamp
 }
 
-export interface AnimationState {
-  animatingPit: number | null
-  animatingStones: StoneAnimation[]
-}
-
-export interface StoneAnimation {
-  id: string
-  fromPit: number
-  toPit: number
-  progress: number // 0 to 1
-}
-
 export type AchievementId =
   | 'perfect_capture'
   | 'chain_master'

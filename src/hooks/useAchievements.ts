@@ -2,9 +2,19 @@
 
 import { useState, useCallback, useEffect } from 'react'
 import type { Achievement, AchievementId, AchievementProgress } from '@/types/mancala.types'
+import { STORAGE_KEYS } from '@/lib/storageKeys'
+import { UI_TIMING } from '@/lib/constants'
 
-const STORAGE_KEY = 'mancala_achievements'
-const PROGRESS_KEY = 'mancala_achievement_progress'
+/**
+ * Default achievement progress object
+ */
+const DEFAULT_PROGRESS: AchievementProgress = {
+  totalStonesCaptured: 0,
+  currentWinStreak: 0,
+  maxCaptureInSingleMove: 0,
+  currentExtraTurnChain: 0,
+  maxExtraTurnChain: 0,
+}
 
 /**
  * Define all available achievements
@@ -77,7 +87,7 @@ const ACHIEVEMENT_DEFINITIONS: Achievement[] = [
  */
 function loadAchievements(): Achievement[] {
   try {
-    const stored = localStorage.getItem(STORAGE_KEY)
+    const stored = localStorage.getItem(STORAGE_KEYS.ACHIEVEMENTS)
     if (!stored) return ACHIEVEMENT_DEFINITIONS
 
     const parsed = JSON.parse(stored)
@@ -96,7 +106,7 @@ function loadAchievements(): Achievement[] {
  */
 function saveAchievements(achievements: Achievement[]): void {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(achievements))
+    localStorage.setItem(STORAGE_KEYS.ACHIEVEMENTS, JSON.stringify(achievements))
   } catch {
     // Silent fail for localStorage errors - non-critical functionality
   }
@@ -107,25 +117,13 @@ function saveAchievements(achievements: Achievement[]): void {
  */
 function loadProgress(): AchievementProgress {
   try {
-    const stored = localStorage.getItem(PROGRESS_KEY)
+    const stored = localStorage.getItem(STORAGE_KEYS.ACHIEVEMENT_PROGRESS)
     if (!stored) {
-      return {
-        totalStonesCaptured: 0,
-        currentWinStreak: 0,
-        maxCaptureInSingleMove: 0,
-        currentExtraTurnChain: 0,
-        maxExtraTurnChain: 0,
-      }
+      return DEFAULT_PROGRESS
     }
     return JSON.parse(stored)
   } catch {
-    return {
-      totalStonesCaptured: 0,
-      currentWinStreak: 0,
-      maxCaptureInSingleMove: 0,
-      currentExtraTurnChain: 0,
-      maxExtraTurnChain: 0,
-    }
+    return DEFAULT_PROGRESS
   }
 }
 
@@ -134,7 +132,7 @@ function loadProgress(): AchievementProgress {
  */
 function saveProgress(progress: AchievementProgress): void {
   try {
-    localStorage.setItem(PROGRESS_KEY, JSON.stringify(progress))
+    localStorage.setItem(STORAGE_KEYS.ACHIEVEMENT_PROGRESS, JSON.stringify(progress))
   } catch {
     // Silent fail for localStorage errors - non-critical functionality
   }
@@ -164,8 +162,8 @@ export function useAchievements() {
         if (achievement.id === id && !achievement.unlockedAt) {
           const unlocked = { ...achievement, unlockedAt: Date.now() }
           setRecentlyUnlocked(unlocked)
-          // Clear notification after 5 seconds
-          setTimeout(() => setRecentlyUnlocked(null), 5000)
+          // Clear notification after timeout
+          setTimeout(() => setRecentlyUnlocked(null), UI_TIMING.ACHIEVEMENT_TOAST_DURATION)
           return unlocked
         }
         return achievement
@@ -259,7 +257,7 @@ export function useAchievements() {
    * Track a game result
    */
   const trackGameResult = useCallback(
-    (won: boolean, gameDuration: number, _playerScore: number, opponentScore: number, maxDeficit: number) => {
+    (won: boolean, gameDuration: number, opponentScore: number, maxDeficit: number) => {
       if (won) {
         // First win
         unlockAchievement('first_win')
@@ -306,13 +304,7 @@ export function useAchievements() {
    */
   const resetAchievements = useCallback(() => {
     setAchievements(ACHIEVEMENT_DEFINITIONS)
-    setProgress({
-      totalStonesCaptured: 0,
-      currentWinStreak: 0,
-      maxCaptureInSingleMove: 0,
-      currentExtraTurnChain: 0,
-      maxExtraTurnChain: 0,
-    })
+    setProgress(DEFAULT_PROGRESS)
   }, [])
 
   /**

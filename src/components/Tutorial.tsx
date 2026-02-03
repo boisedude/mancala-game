@@ -179,7 +179,7 @@ export function Tutorial({ open, onOpenChange, onComplete }: TutorialProps) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-2xl">{currentStep.title}</DialogTitle>
           <DialogDescription className="text-base">{currentStep.description}</DialogDescription>

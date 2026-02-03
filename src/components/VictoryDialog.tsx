@@ -1,5 +1,6 @@
 // Victory dialog - celebrates win/loss
 
+import { memo } from 'react'
 import {
   Dialog,
   DialogContent,
@@ -29,7 +30,7 @@ interface VictoryDialogProps {
   character?: Character
 }
 
-export function VictoryDialog({
+export const VictoryDialog = memo(function VictoryDialog({
   open,
   onOpenChange,
   winner,
@@ -201,4 +202,4 @@ export function VictoryDialog({
       </DialogContent>
     </Dialog>
   )
-}
+})

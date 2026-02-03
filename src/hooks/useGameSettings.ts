@@ -1,6 +1,7 @@
 // Custom hook for game settings management
 
 import { useState, useEffect, useCallback } from 'react'
+import { STORAGE_KEYS } from '@/lib/storageKeys'
 
 export type AnimationSpeed = 'off' | 'fast' | 'normal' | 'slow'
 export type HintLevel = 'off' | 'basic' | 'advanced'
@@ -23,8 +24,6 @@ const DEFAULT_SETTINGS: GameSettings = {
   hapticFeedback: true,
 }
 
-const SETTINGS_STORAGE_KEY = 'mancala_game_settings'
-
 // Animation speed to milliseconds mapping
 export const ANIMATION_SPEED_MS: Record<AnimationSpeed, number> = {
   off: 0,
@@ -36,7 +35,7 @@ export const ANIMATION_SPEED_MS: Record<AnimationSpeed, number> = {
 export function useGameSettings() {
   const [settings, setSettings] = useState<GameSettings>(() => {
     try {
-      const stored = localStorage.getItem(SETTINGS_STORAGE_KEY)
+      const stored = localStorage.getItem(STORAGE_KEYS.GAME_SETTINGS)
       if (stored) {
         const parsed = JSON.parse(stored)
         return { ...DEFAULT_SETTINGS, ...parsed }
@@ -50,7 +49,7 @@ export function useGameSettings() {
   // Save settings to localStorage whenever they change
   useEffect(() => {
     try {
-      localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(settings))
+      localStorage.setItem(STORAGE_KEYS.GAME_SETTINGS, JSON.stringify(settings))
     } catch {
       // Silent fail for localStorage errors - settings work for current session
     }

@@ -22,9 +22,8 @@ export function useHapticFeedback(enabled: boolean = true) {
 
       try {
         navigator.vibrate(vibratePattern)
-      } catch (error) {
+      } catch {
         // Silently fail if vibration is not supported or blocked
-        console.debug('Haptic feedback not available:', error)
       }
     },
     [enabled]

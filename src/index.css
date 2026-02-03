@@ -1,6 +1,39 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+
+@theme {
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+  --color-popover: hsl(var(--popover));
+  --color-popover-foreground: hsl(var(--popover-foreground));
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --animate-confetti-fall: confetti-fall linear forwards;
+  --animate-stone-idle: stone-idle 3s ease-in-out infinite;
+  --animate-stone-sow: stone-sow 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  --animate-stone-land: stone-land 0.3s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  --animate-stone-capture: stone-capture 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  --animate-board-breathe: board-breathe 4s ease-in-out infinite;
+  --animate-pit-glow: pit-glow 2s ease-in-out infinite;
+  --animate-victory-burst: victory-burst 1s ease-out forwards;
+  --animate-stone-shimmer: stone-shimmer 2s ease-in-out infinite;
+}
 
 @layer base {
   :root {
@@ -16,7 +49,7 @@
     --secondary: 0 0% 96.1%;
     --secondary-foreground: 0 0% 9%;
     --muted: 0 0% 96.1%;
-    --muted-foreground: 0 0% 45.1%;
+    --muted-foreground: 0 0% 55%;
     --accent: 0 0% 96.1%;
     --accent-foreground: 0 0% 9%;
     --destructive: 0 84.2% 60.2%;
@@ -73,9 +106,323 @@
   }
 }
 
+/* Stone drop animation - enhanced with bounce */
+@keyframes stone-drop {
+  0% {
+    transform: translateY(-15px) scale(0.6);
+    opacity: 0;
+  }
+  40% {
+    transform: translateY(3px) scale(1.1);
+    opacity: 1;
+  }
+  60% {
+    transform: translateY(-2px) scale(0.95);
+  }
+  80% {
+    transform: translateY(1px) scale(1.02);
+  }
+  100% {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+}
+
+/* Subtle bounce animation */
+@keyframes bounce-subtle {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-3px);
+  }
+}
+
+/* Stone idle animation - subtle movement */
+@keyframes stone-idle {
+  0%, 100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  25% {
+    transform: translateY(-0.5px) rotate(0.5deg);
+  }
+  50% {
+    transform: translateY(0.5px) rotate(-0.5deg);
+  }
+  75% {
+    transform: translateY(-0.3px) rotate(0.3deg);
+  }
+}
+
+/* Stone sowing animation - arc movement */
+@keyframes stone-sow {
+  0% {
+    transform: translate(0, 0) scale(1);
+    opacity: 1;
+  }
+  30% {
+    transform: translate(var(--sow-x, 20px), calc(var(--sow-y, 20px) - 30px)) scale(1.2);
+  }
+  100% {
+    transform: translate(var(--sow-x, 20px), var(--sow-y, 20px)) scale(1);
+    opacity: 1;
+  }
+}
+
+/* Stone landing animation - satisfying drop */
+@keyframes stone-land {
+  0% {
+    transform: translateY(-20px) scale(0.8);
+    opacity: 0.5;
+  }
+  50% {
+    transform: translateY(4px) scale(1.15);
+    opacity: 1;
+  }
+  70% {
+    transform: translateY(-3px) scale(0.95);
+  }
+  85% {
+    transform: translateY(2px) scale(1.05);
+  }
+  100% {
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Stone capture animation - flying to store */
+@keyframes stone-capture {
+  0% {
+    transform: translate(0, 0) scale(1);
+    opacity: 1;
+  }
+  20% {
+    transform: translate(0, -15px) scale(1.3);
+  }
+  100% {
+    transform: translate(var(--capture-x, 100px), var(--capture-y, 0)) scale(0.8);
+    opacity: 0;
+  }
+}
+
+/* Board breathing animation */
+@keyframes board-breathe {
+  0%, 100% {
+    box-shadow:
+      0 25px 50px -12px rgba(180, 83, 9, 0.15),
+      inset 0 2px 4px rgba(255, 255, 255, 0.1);
+  }
+  50% {
+    box-shadow:
+      0 25px 60px -10px rgba(180, 83, 9, 0.2),
+      inset 0 2px 4px rgba(255, 255, 255, 0.15);
+  }
+}
+
+/* Pit glow animation */
+@keyframes pit-glow {
+  0%, 100% {
+    box-shadow:
+      inset 0 4px 8px rgba(0, 0, 0, 0.3),
+      inset 0 -2px 4px rgba(255, 255, 255, 0.1);
+  }
+  50% {
+    box-shadow:
+      inset 0 4px 10px rgba(0, 0, 0, 0.35),
+      inset 0 -2px 6px rgba(255, 255, 255, 0.15);
+  }
+}
+
+/* Victory celebration burst */
+@keyframes victory-burst {
+  0% {
+    transform: scale(0);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.5);
+    opacity: 0.8;
+  }
+  100% {
+    transform: scale(2);
+    opacity: 0;
+  }
+}
+
+/* Stone shimmer effect */
+@keyframes stone-shimmer {
+  0%, 100% {
+    filter: brightness(1);
+  }
+  50% {
+    filter: brightness(1.15);
+  }
+}
+
+/* Store pulse animation */
+@keyframes store-pulse {
+  0%, 100% {
+    box-shadow:
+      0 10px 30px -5px rgba(0, 0, 0, 0.2),
+      inset 0 -8px 20px rgba(0, 0, 0, 0.15);
+  }
+  50% {
+    box-shadow:
+      0 15px 40px -5px rgba(0, 0, 0, 0.25),
+      inset 0 -8px 25px rgba(0, 0, 0, 0.2);
+  }
+}
+
+/* Celebration sparkle */
+@keyframes sparkle {
+  0%, 100% {
+    opacity: 0;
+    transform: scale(0) rotate(0deg);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1) rotate(180deg);
+  }
+}
+
+/* Floating animation */
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-5px);
+  }
+}
+
 @layer utilities {
+  .animate-stone-drop {
+    animation: stone-drop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  }
+
+  .animate-bounce-subtle {
+    animation: bounce-subtle 1s ease-in-out infinite;
+  }
+
   .animate-confetti-fall {
     animation: confetti-fall linear forwards;
+  }
+
+  .animate-stone-idle {
+    animation: stone-idle 3s ease-in-out infinite;
+  }
+
+  .animate-stone-sow {
+    animation: stone-sow 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  }
+
+  .animate-stone-land {
+    animation: stone-land 0.3s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  }
+
+  .animate-stone-capture {
+    animation: stone-capture 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  }
+
+  .animate-board-breathe {
+    animation: board-breathe 4s ease-in-out infinite;
+  }
+
+  .animate-pit-glow {
+    animation: pit-glow 2s ease-in-out infinite;
+  }
+
+  .animate-victory-burst {
+    animation: victory-burst 1s ease-out forwards;
+  }
+
+  .animate-stone-shimmer {
+    animation: stone-shimmer 2s ease-in-out infinite;
+  }
+
+  .animate-store-pulse {
+    animation: store-pulse 3s ease-in-out infinite;
+  }
+
+  .animate-sparkle {
+    animation: sparkle 1.5s ease-in-out infinite;
+  }
+
+  .animate-float {
+    animation: float 3s ease-in-out infinite;
+  }
+
+  /* Wood grain background texture */
+  .wood-grain {
+    background:
+      repeating-linear-gradient(
+        90deg,
+        transparent,
+        transparent 2px,
+        rgba(139, 69, 19, 0.03) 2px,
+        rgba(139, 69, 19, 0.03) 4px
+      ),
+      repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 50px,
+        rgba(139, 69, 19, 0.02) 50px,
+        rgba(139, 69, 19, 0.02) 100px
+      ),
+      linear-gradient(
+        45deg,
+        rgba(180, 83, 9, 0.05) 0%,
+        transparent 50%,
+        rgba(180, 83, 9, 0.05) 100%
+      );
+  }
+
+  /* Carved pit effect */
+  .pit-carved {
+    box-shadow:
+      inset 0 6px 12px rgba(0, 0, 0, 0.4),
+      inset 0 -3px 6px rgba(255, 255, 255, 0.1),
+      inset 2px 0 4px rgba(0, 0, 0, 0.15),
+      inset -2px 0 4px rgba(0, 0, 0, 0.15),
+      0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+
+  /* Store carved effect - deeper */
+  .store-carved {
+    box-shadow:
+      inset 0 10px 20px rgba(0, 0, 0, 0.35),
+      inset 0 -5px 10px rgba(255, 255, 255, 0.08),
+      inset 4px 0 8px rgba(0, 0, 0, 0.2),
+      inset -4px 0 8px rgba(0, 0, 0, 0.2),
+      0 4px 8px rgba(0, 0, 0, 0.15);
+  }
+
+  /* Ambient glow effect */
+  .ambient-glow {
+    box-shadow:
+      0 0 60px rgba(251, 191, 36, 0.1),
+      0 0 100px rgba(251, 191, 36, 0.05);
+  }
+
+  /* Stone realistic shadow */
+  .stone-shadow {
+    box-shadow:
+      0 2px 4px rgba(0, 0, 0, 0.3),
+      0 1px 2px rgba(0, 0, 0, 0.2),
+      inset 0 -1px 2px rgba(0, 0, 0, 0.2);
+  }
+
+  /* Premium board border */
+  .board-border {
+    border: 4px solid;
+    border-image: linear-gradient(
+      135deg,
+      #d97706 0%,
+      #fbbf24 25%,
+      #d97706 50%,
+      #92400e 75%,
+      #d97706 100%
+    ) 1;
   }
 
   /* Custom scrollbar */

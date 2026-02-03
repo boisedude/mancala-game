@@ -30,6 +30,8 @@ import { useCharacterSelection } from '@/hooks/useCharacterSelection'
 import { useBentleyStats } from '@/hooks/useBentleyStats'
 import { AchievementToast } from '@/components/AchievementToast'
 import { P1_STORE, P2_STORE } from '@/lib/mancalaRules'
+import { STORAGE_KEYS } from '@/lib/storageKeys'
+import { UI_TIMING } from '@/lib/constants'
 import type { Difficulty } from '@/types/mancala.types'
 import { QuestionMarkCircledIcon } from '@radix-ui/react-icons'
 import type { SavedGame } from '@/hooks/useGamePersistence'
@@ -96,16 +98,16 @@ export default function MancalaGame() {
 
   // Check if this is the user's first time and show a helpful dialog
   useEffect(() => {
-    const hasSeenWelcome = localStorage.getItem('mancala_seen_welcome')
-    const tutorialCompleted = localStorage.getItem('mancala_tutorial_completed')
+    const hasSeenWelcome = localStorage.getItem(STORAGE_KEYS.SEEN_WELCOME)
+    const tutorialCompleted = localStorage.getItem(STORAGE_KEYS.TUTORIAL_COMPLETED)
 
     // Show How to Play dialog for first-time users who haven't seen welcome or completed tutorial
     if (!hasSeenWelcome && !tutorialCompleted && gameState.status === 'setup') {
       // Delay to allow the page to load first
       setTimeout(() => {
         setShowHowToPlay(true)
-        localStorage.setItem('mancala_seen_welcome', 'true')
-      }, 500)
+        localStorage.setItem(STORAGE_KEYS.SEEN_WELCOME, 'true')
+      }, UI_TIMING.WELCOME_DIALOG_DELAY)
     }
   }, [gameState.status])
 
@@ -204,9 +206,20 @@ export default function MancalaGame() {
     }
   }, [gameState, gameStartTime, highestCaptureThisGame, saveGame])
 
+  // Track if we've already handled the game over for this game
+  const [gameOverHandled, setGameOverHandled] = useState(false)
+
+  // Reset gameOverHandled when a new game starts
+  useEffect(() => {
+    if (gameState.status === 'playing') {
+      setGameOverHandled(false)
+    }
+  }, [gameState.status])
+
   // Handle game over - only run once per game
   useEffect(() => {
-    if (gameState.status === 'finished' && !showVictory) {
+    if (gameState.status === 'finished' && !gameOverHandled) {
+      setGameOverHandled(true)
       const gameDuration = Math.floor((Date.now() - gameStartTime) / 1000)
       const playerWon = gameState.winner === 1
       const playerScore = gameState.board.pits[P1_STORE]
@@ -218,7 +231,7 @@ export default function MancalaGame() {
         if (settings.showVictoryCelebration) {
           setShowConfetti(true)
           vibrate('success')
-          setTimeout(() => setShowConfetti(false), 3000)
+          setTimeout(() => setShowConfetti(false), UI_TIMING.CONFETTI_DURATION)
         }
       } else {
         playSound('defeat')
@@ -237,7 +250,7 @@ export default function MancalaGame() {
       }
 
       // Track game result for achievements
-      trackGameResult(playerWon, gameDuration, playerScore, opponentScore, maxDeficitThisGame)
+      trackGameResult(playerWon, gameDuration, opponentScore, maxDeficitThisGame)
 
       // Clear saved game when game is completed
       clearSavedGame()
@@ -252,15 +265,15 @@ export default function MancalaGame() {
       setShowVictory(true)
     }
   }, [
-    // Only re-run when game finishes (don't include showVictory to avoid reopening dialog)
     gameState.status,
-    gameState.moveHistory.length, // Use as unique game identifier
+    gameState.moveHistory.length,
     gameState.board.pits,
     gameState.mode,
     gameState.winner,
-    characterId, // Include characterId so Bentley stats are tracked correctly
-    character, // Include character for victory announcements
-    bentleyStats, // Include bentleyStats for API calls
+    gameOverHandled,
+    characterId,
+    character,
+    bentleyStats,
     recordGame,
     trackGameResult,
     clearSavedGame,
@@ -287,7 +300,7 @@ export default function MancalaGame() {
     setTimeout(() => {
       startGame(gameState.mode, gameState.difficulty)
       setIsStartingGame(false)
-    }, 300)
+    }, UI_TIMING.START_GAME_DELAY)
   }
 
   const handleDifficultyChange = (difficulty: Difficulty) => {
@@ -331,12 +344,12 @@ export default function MancalaGame() {
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text).then(() => {
       setShowCopyNotification(true)
-      setTimeout(() => setShowCopyNotification(false), 2000)
+      setTimeout(() => setShowCopyNotification(false), UI_TIMING.COPY_NOTIFICATION_DURATION)
     })
   }
 
   const handleTutorialComplete = () => {
-    localStorage.setItem('mancala_tutorial_completed', 'true')
+    localStorage.setItem(STORAGE_KEYS.TUTORIAL_COMPLETED, 'true')
     setShowTutorial(false)
   }
 
@@ -377,11 +390,11 @@ export default function MancalaGame() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-rose-50 px-4 py-8 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
-      {/* Return to Arcade Button - Fixed position */}
-      <div className="fixed left-4 top-4 z-10">
+      {/* Return to Arcade Button - Fixed position with responsive positioning */}
+      <div className="fixed left-2 top-2 z-10 sm:left-4 sm:top-4">
         <a
           href="https://www.mcooper.com/arcade"
-          className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-lg transition-all hover:bg-blue-700 hover:shadow-xl"
+          className="flex items-center gap-1.5 rounded-lg bg-blue-600 px-2.5 py-1.5 text-xs font-semibold text-white shadow-lg transition-all hover:bg-blue-700 hover:shadow-xl sm:gap-2 sm:px-4 sm:py-2 sm:text-sm"
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"

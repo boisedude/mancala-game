@@ -1,5 +1,6 @@
 // Game controls - new game, difficulty, settings
 
+import { memo } from 'react'
 import { Button } from '@/components/ui/button'
 import {
   Select,
@@ -25,7 +26,7 @@ interface GameControlsProps {
   canUndo?: boolean
 }
 
-export function GameControls({
+export const GameControls = memo(function GameControls({
   difficulty,
   gameStatus,
   gameMode,
@@ -116,6 +117,7 @@ export function GameControls({
         variant="outline"
         size="lg"
         className="w-full gap-2 sm:w-auto"
+        aria-label="View game statistics and leaderboard"
       >
         <BarChartIcon className="h-4 w-4" />
         Stats
@@ -148,4 +150,4 @@ export function GameControls({
       )}
     </div>
   )
-}
+})

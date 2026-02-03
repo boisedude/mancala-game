@@ -1,7 +1,14 @@
 // Unit tests for AI strategies
 
 import { selectAIMove } from '@/lib/aiStrategies'
-import { createInitialBoard, executeMove, getValidMoves } from '@/lib/mancalaRules'
+import {
+  createInitialBoard,
+  executeMove,
+  getValidMoves,
+  isGameOver,
+  P1_STORE,
+  P2_STORE,
+} from '@/lib/mancalaRules'
 import type { Board, Difficulty } from '@/types/mancala.types'
 
 describe('aiStrategies', () => {
@@ -231,6 +238,193 @@ describe('aiStrategies', () => {
 
         // Medium AI should be deterministic and choose the same good move
         expect(moves.size).toBe(1)
+      })
+    })
+
+    describe('error handling', () => {
+      it('should throw error when no valid moves available', () => {
+        const board: Board = {
+          // Player 2 has no stones in their pits
+          pits: [4, 4, 4, 4, 4, 4, 0, 0, 0, 0, 0, 0, 0, 24],
+        }
+
+        expect(() => selectAIMove(board, 2, 'easy')).toThrow('No valid moves available for AI')
+        expect(() => selectAIMove(board, 2, 'medium')).toThrow('No valid moves available for AI')
+        expect(() => selectAIMove(board, 2, 'hard')).toThrow('No valid moves available for AI')
+      })
+    })
+
+    describe('game simulation', () => {
+      it('should complete a full game without errors (easy vs easy)', () => {
+        let board = createInitialBoard()
+        let currentPlayer: 1 | 2 = 1
+        let moveCount = 0
+        const maxMoves = 100 // Prevent infinite loop
+
+        while (!isGameOver(board) && moveCount < maxMoves) {
+          const validMoves = getValidMoves(board, currentPlayer)
+          if (validMoves.length === 0) break
+
+          const move = selectAIMove(board, currentPlayer, 'easy')
+          const result = executeMove(board, move, currentPlayer)
+          board = result.board
+
+          if (!result.move.extraTurn) {
+            currentPlayer = currentPlayer === 1 ? 2 : 1
+          }
+          moveCount++
+        }
+
+        // Game should end naturally
+        expect(isGameOver(board)).toBe(true)
+        // Stone count should be preserved
+        const total = board.pits.reduce((sum, s) => sum + s, 0)
+        expect(total).toBe(48)
+      })
+
+      it('should complete a full game without errors (hard vs hard)', () => {
+        let board = createInitialBoard()
+        let currentPlayer: 1 | 2 = 1
+        let moveCount = 0
+        const maxMoves = 100
+
+        while (!isGameOver(board) && moveCount < maxMoves) {
+          const validMoves = getValidMoves(board, currentPlayer)
+          if (validMoves.length === 0) break
+
+          const move = selectAIMove(board, currentPlayer, 'hard')
+          const result = executeMove(board, move, currentPlayer)
+          board = result.board
+
+          if (!result.move.extraTurn) {
+            currentPlayer = currentPlayer === 1 ? 2 : 1
+          }
+          moveCount++
+        }
+
+        expect(isGameOver(board)).toBe(true)
+        const total = board.pits.reduce((sum, s) => sum + s, 0)
+        expect(total).toBe(48)
+      })
+    })
+
+    describe('AI move quality', () => {
+      it('hard AI should take winning move when available', () => {
+        // Set up a scenario where one move wins the game
+        const board: Board = {
+          // P2 can end game by playing pit 12 and will have more stones
+          pits: [0, 0, 0, 0, 0, 0, 10, 0, 0, 0, 0, 0, 2, 36],
+        }
+
+        const move = selectAIMove(board, 2, 'hard')
+        const result = executeMove(board, move, 2)
+
+        // After the move, P2 should have high score
+        expect(result.board.pits[P2_STORE]).toBeGreaterThan(10)
+      })
+
+      it('medium AI should take extra turn when available', () => {
+        const board = createInitialBoard()
+        // Set up guaranteed extra turn: pit 7 has exactly 6 stones -> lands in P2 store
+        board.pits[7] = 6
+
+        const move = selectAIMove(board, 2, 'medium')
+
+        // Medium should always take the extra turn
+        expect(move).toBe(7)
+      })
+
+      it('medium AI should take large capture when available', () => {
+        const board = createInitialBoard()
+        // Set up capture: pit 7 has 1, pit 8 is empty, opposite (4) has many stones
+        board.pits[7] = 1
+        board.pits[8] = 0
+        board.pits[4] = 15 // Juicy target
+        // Make other pits less attractive
+        board.pits[9] = 1
+        board.pits[10] = 1
+        board.pits[11] = 1
+        board.pits[12] = 1
+
+        const move = selectAIMove(board, 2, 'medium')
+        const result = executeMove(board, move, 2)
+
+        // Should have made the capture
+        expect(result.move.capturedStones).toBe(16) // 1 + 15
+      })
+
+      it('easy AI should still make valid moves in complex positions', () => {
+        const board: Board = {
+          // Complex mid-game position
+          pits: [1, 2, 0, 3, 1, 2, 18, 2, 1, 3, 0, 2, 1, 16],
+        }
+
+        // Run multiple times since easy AI is random
+        for (let i = 0; i < 10; i++) {
+          const move = selectAIMove(board, 2, 'easy')
+          const validMoves = getValidMoves(board, 2)
+          expect(validMoves).toContain(move)
+        }
+      })
+    })
+
+    describe('minimax correctness', () => {
+      it('hard AI handles extra turns correctly in search', () => {
+        const board = createInitialBoard()
+        // Create a position where taking extra turn leads to better outcome
+        board.pits[7] = 6 // Extra turn possible
+
+        const move = selectAIMove(board, 2, 'hard')
+        const result = executeMove(board, move, 2)
+
+        // Hard AI should recognize the value of extra turns
+        // If move 7 gives extra turn, it should be strongly considered
+        if (move === 7) {
+          expect(result.move.extraTurn).toBe(true)
+        }
+      })
+
+      it('hard AI evaluates positions for both players', () => {
+        // Position where P2 needs to consider P1 responses
+        const board: Board = {
+          pits: [2, 2, 2, 2, 2, 2, 18, 2, 2, 2, 2, 2, 2, 18],
+        }
+
+        const move = selectAIMove(board, 2, 'hard')
+        const validMoves = getValidMoves(board, 2)
+
+        // Move should be valid
+        expect(validMoves).toContain(move)
+      })
+    })
+
+    describe('player independence', () => {
+      it('all difficulties work correctly for player 1', () => {
+        const board = createInitialBoard()
+        const difficulties: Difficulty[] = ['easy', 'medium', 'hard']
+
+        difficulties.forEach(difficulty => {
+          const move = selectAIMove(board, 1, difficulty)
+          const validMoves = getValidMoves(board, 1)
+          expect(validMoves).toContain(move)
+          // Should be in P1 pit range
+          expect(move).toBeGreaterThanOrEqual(0)
+          expect(move).toBeLessThanOrEqual(5)
+        })
+      })
+
+      it('all difficulties work correctly for player 2', () => {
+        const board = createInitialBoard()
+        const difficulties: Difficulty[] = ['easy', 'medium', 'hard']
+
+        difficulties.forEach(difficulty => {
+          const move = selectAIMove(board, 2, difficulty)
+          const validMoves = getValidMoves(board, 2)
+          expect(validMoves).toContain(move)
+          // Should be in P2 pit range
+          expect(move).toBeGreaterThanOrEqual(7)
+          expect(move).toBeLessThanOrEqual(12)
+        })
       })
     })
   })

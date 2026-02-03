@@ -2,9 +2,7 @@
 
 import { useState, useCallback } from 'react'
 import type { LeaderboardEntry } from '@/types/mancala.types'
-
-const STORAGE_KEY = 'mancala_leaderboard'
-const PLAYER_NAME_KEY = 'mancala_player_name'
+import { STORAGE_KEYS } from '@/lib/storageKeys'
 
 /**
  * Validates that an object matches the LeaderboardEntry structure
@@ -37,7 +35,7 @@ function isValidLeaderboardEntry(obj: unknown): obj is LeaderboardEntry {
  */
 function getLeaderboardFromStorage(): LeaderboardEntry | null {
   try {
-    const stored = localStorage.getItem(STORAGE_KEY)
+    const stored = localStorage.getItem(STORAGE_KEYS.LEADERBOARD)
     if (!stored) return null
 
     const parsed = JSON.parse(stored)
@@ -58,7 +56,7 @@ function getLeaderboardFromStorage(): LeaderboardEntry | null {
  */
 function saveLeaderboardToStorage(entry: LeaderboardEntry): void {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(entry))
+    localStorage.setItem(STORAGE_KEYS.LEADERBOARD, JSON.stringify(entry))
   } catch {
     // Silent fail for localStorage errors - stats work for current session
   }
@@ -68,14 +66,14 @@ function saveLeaderboardToStorage(entry: LeaderboardEntry): void {
  * Gets player name from localStorage
  */
 function getPlayerNameFromStorage(): string {
-  return localStorage.getItem(PLAYER_NAME_KEY) || 'Player'
+  return localStorage.getItem(STORAGE_KEYS.PLAYER_NAME) || 'Player'
 }
 
 /**
  * Saves player name to localStorage
  */
 function savePlayerNameToStorage(name: string): void {
-  localStorage.setItem(PLAYER_NAME_KEY, name)
+  localStorage.setItem(STORAGE_KEYS.PLAYER_NAME, name)
 }
 
 /**

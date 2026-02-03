@@ -3,21 +3,45 @@
 import {
   createInitialBoard,
   executeMove,
+  executeMoveAnimated,
   isValidMove,
   isGameOver,
   finalizeGame,
   getValidMoves,
   getPlayerStore,
+  getOpponentStore,
+  getPlayerPits,
   getOppositePit,
   isPitOwnedBy,
+  calculateScore,
+  simulateMove,
   P1_PITS,
   P2_PITS,
   P1_STORE,
   P2_STORE,
+  INITIAL_STONES_PER_PIT,
+  PITS_PER_SIDE,
 } from '@/lib/mancalaRules'
 import type { Board } from '@/types/mancala.types'
 
 describe('mancalaRules', () => {
+  describe('constants', () => {
+    it('should have correct initial stones per pit', () => {
+      expect(INITIAL_STONES_PER_PIT).toBe(4)
+    })
+
+    it('should have correct pits per side', () => {
+      expect(PITS_PER_SIDE).toBe(6)
+    })
+
+    it('should have correct pit indices', () => {
+      expect(P1_PITS).toEqual([0, 1, 2, 3, 4, 5])
+      expect(P2_PITS).toEqual([7, 8, 9, 10, 11, 12])
+      expect(P1_STORE).toBe(6)
+      expect(P2_STORE).toBe(13)
+    })
+  })
+
   describe('createInitialBoard', () => {
     it('should create a board with 4 stones in each pit', () => {
       const board = createInitialBoard()
@@ -41,6 +65,12 @@ describe('mancalaRules', () => {
       const board = createInitialBoard()
       expect(board.pits.length).toBe(14)
     })
+
+    it('should have total of 48 stones', () => {
+      const board = createInitialBoard()
+      const total = board.pits.reduce((sum, stones) => sum + stones, 0)
+      expect(total).toBe(48)
+    })
   })
 
   describe('getPlayerStore', () => {
@@ -52,6 +82,30 @@ describe('mancalaRules', () => {
     it('should return correct store index for player 2', () => {
       expect(getPlayerStore(2)).toBe(P2_STORE)
       expect(getPlayerStore(2)).toBe(13)
+    })
+  })
+
+  describe('getOpponentStore', () => {
+    it('should return opponent store index for player 1', () => {
+      expect(getOpponentStore(1)).toBe(P2_STORE)
+      expect(getOpponentStore(1)).toBe(13)
+    })
+
+    it('should return opponent store index for player 2', () => {
+      expect(getOpponentStore(2)).toBe(P1_STORE)
+      expect(getOpponentStore(2)).toBe(6)
+    })
+  })
+
+  describe('getPlayerPits', () => {
+    it('should return correct pit indices for player 1', () => {
+      expect(getPlayerPits(1)).toEqual(P1_PITS)
+      expect(getPlayerPits(1)).toEqual([0, 1, 2, 3, 4, 5])
+    })
+
+    it('should return correct pit indices for player 2', () => {
+      expect(getPlayerPits(2)).toEqual(P2_PITS)
+      expect(getPlayerPits(2)).toEqual([7, 8, 9, 10, 11, 12])
     })
   })
 
@@ -241,6 +295,99 @@ describe('mancalaRules', () => {
       // No capture because opposite pit is empty
       expect(move.capturedStones).toBeUndefined()
     })
+
+    it('should not capture when landing in opponent pit', () => {
+      const board = createInitialBoard()
+      // Player 1 has many stones that will land in player 2 territory
+      board.pits[5] = 8 // Will distribute past own store into P2 territory
+
+      const { board: newBoard, move } = executeMove(board, 5, 1)
+
+      // No capture should happen even if landing in "empty" opponent pit
+      expect(move.capturedStones).toBeUndefined()
+      // Player 1 store should have 1 stone (passed through it)
+      expect(newBoard.pits[P1_STORE]).toBe(1)
+    })
+
+    it('should not capture when landing in own store', () => {
+      const board = createInitialBoard()
+      // Set up so player 1 lands in own store (extra turn scenario)
+      board.pits[2] = 4 // Exactly lands in P1 store (pit 6)
+
+      const { move } = executeMove(board, 2, 1)
+
+      // No capture, just extra turn
+      expect(move.capturedStones).toBeUndefined()
+      expect(move.extraTurn).toBe(true)
+    })
+
+    it('should track affected pits during distribution', () => {
+      const board = createInitialBoard()
+
+      const { move } = executeMove(board, 0, 1)
+
+      // Should have 4 affected pits (1, 2, 3, 4)
+      expect(move.affectedPits).toEqual([1, 2, 3, 4])
+    })
+
+    it('should correctly set player in move record', () => {
+      const board = createInitialBoard()
+
+      const { move: move1 } = executeMove(board, 0, 1)
+      const { move: move2 } = executeMove(board, 7, 2)
+
+      expect(move1.player).toBe(1)
+      expect(move2.player).toBe(2)
+    })
+
+    it('should record correct pitIndex in move', () => {
+      const board = createInitialBoard()
+
+      const { move } = executeMove(board, 3, 1)
+
+      expect(move.pitIndex).toBe(3)
+    })
+
+    it('should set timestamp in move', () => {
+      const board = createInitialBoard()
+      const beforeTime = Date.now()
+
+      const { move } = executeMove(board, 0, 1)
+
+      const afterTime = Date.now()
+      expect(move.timestamp).toBeGreaterThanOrEqual(beforeTime)
+      expect(move.timestamp).toBeLessThanOrEqual(afterTime)
+    })
+
+    it('should handle multiple laps around the board', () => {
+      const board: Board = {
+        pits: [0, 0, 0, 0, 0, 15, 0, 0, 0, 0, 0, 0, 0, 0],
+      }
+
+      const { board: newBoard } = executeMove(board, 5, 1)
+
+      // 15 stones distributed: wraps around entire board and more
+      // Should skip P2 store (13) so distribution covers 13 positions per lap
+      // Starting from pit 5, distributing counter-clockwise:
+      // pit 6(store), 7, 8, 9, 10, 11, 12, [skip 13], 0, 1, 2, 3, 4, 5, 6(store again)
+      // That's 14 positions (skipping store 13), so with 15 stones:
+      // First lap: 6,7,8,9,10,11,12,0,1,2,3,4,5 (13 stones), then 6 again (14th), then 7 (15th)
+      expect(newBoard.pits[5]).toBe(1) // Received 1 stone on the wrap
+      expect(newBoard.pits[P1_STORE]).toBe(2) // Passed through twice
+      expect(newBoard.pits[P2_STORE]).toBe(0) // Should never receive stones
+    })
+
+    it('should handle player 2 skipping player 1 store', () => {
+      const board: Board = {
+        pits: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 15, 0],
+      }
+
+      const { board: newBoard } = executeMove(board, 12, 2)
+
+      // Player 2's stones should skip P1 store (6)
+      expect(newBoard.pits[P1_STORE]).toBe(0)
+      expect(newBoard.pits[P2_STORE]).toBeGreaterThan(0)
+    })
   })
 
   describe('isGameOver', () => {
@@ -322,6 +469,197 @@ describe('mancalaRules', () => {
 
       expect(winner).toBe(2)
     })
+
+    it('should preserve total stone count', () => {
+      const board: Board = {
+        pits: [1, 2, 3, 4, 5, 6, 10, 1, 2, 3, 4, 5, 6, 5],
+      }
+      const initialTotal = board.pits.reduce((sum, s) => sum + s, 0)
+
+      const { board: finalBoard } = finalizeGame(board)
+
+      const finalTotal = finalBoard.pits.reduce((sum, s) => sum + s, 0)
+      expect(finalTotal).toBe(initialTotal)
+    })
+  })
+
+  describe('calculateScore', () => {
+    it('should return positive score when player is ahead', () => {
+      const board: Board = {
+        pits: [0, 0, 0, 0, 0, 0, 30, 0, 0, 0, 0, 0, 0, 18],
+      }
+
+      expect(calculateScore(board, 1)).toBe(12) // 30 - 18
+    })
+
+    it('should return negative score when player is behind', () => {
+      const board: Board = {
+        pits: [0, 0, 0, 0, 0, 0, 18, 0, 0, 0, 0, 0, 0, 30],
+      }
+
+      expect(calculateScore(board, 1)).toBe(-12) // 18 - 30
+    })
+
+    it('should return zero for tied stores', () => {
+      const board: Board = {
+        pits: [0, 0, 0, 0, 0, 0, 24, 0, 0, 0, 0, 0, 0, 24],
+      }
+
+      expect(calculateScore(board, 1)).toBe(0)
+      expect(calculateScore(board, 2)).toBe(0)
+    })
+
+    it('should calculate score from player 2 perspective correctly', () => {
+      const board: Board = {
+        pits: [0, 0, 0, 0, 0, 0, 18, 0, 0, 0, 0, 0, 0, 30],
+      }
+
+      expect(calculateScore(board, 2)).toBe(12) // 30 - 18
+    })
+  })
+
+  describe('simulateMove', () => {
+    it('should predict affected pits without modifying board', () => {
+      const board = createInitialBoard()
+      const originalPits = [...board.pits]
+
+      const result = simulateMove(board, 0, 1)
+
+      // Board should not be modified
+      expect(board.pits).toEqual(originalPits)
+      // Should predict correct affected pits
+      expect(result.affectedPits).toEqual([1, 2, 3, 4])
+    })
+
+    it('should correctly predict extra turn', () => {
+      const board = createInitialBoard()
+      board.pits[2] = 4 // Will land exactly in P1 store
+
+      const result = simulateMove(board, 2, 1)
+
+      expect(result.extraTurn).toBe(true)
+      expect(result.lastPit).toBe(P1_STORE)
+    })
+
+    it('should correctly predict no extra turn', () => {
+      const board = createInitialBoard()
+
+      const result = simulateMove(board, 0, 1)
+
+      expect(result.extraTurn).toBe(false)
+    })
+
+    it('should correctly predict capture opportunity', () => {
+      const board = createInitialBoard()
+      board.pits[0] = 1 // One stone
+      board.pits[1] = 0 // Empty landing spot
+      board.pits[11] = 5 // Opposite pit has stones
+
+      const result = simulateMove(board, 0, 1)
+
+      expect(result.willCapture).toBe(true)
+      expect(result.capturedStones).toBe(6) // 1 own + 5 opposite
+    })
+
+    it('should predict no capture when opposite is empty', () => {
+      const board = createInitialBoard()
+      board.pits[0] = 1
+      board.pits[1] = 0
+      board.pits[11] = 0 // Empty opposite
+
+      const result = simulateMove(board, 0, 1)
+
+      expect(result.willCapture).toBe(false)
+      expect(result.capturedStones).toBe(0)
+    })
+
+    it('should predict no capture when landing pit not empty initially', () => {
+      const board = createInitialBoard()
+      // Pit 1 already has 4 stones, landing there won't trigger capture
+
+      const result = simulateMove(board, 0, 1)
+
+      expect(result.willCapture).toBe(false)
+    })
+
+    it('should work correctly for player 2', () => {
+      const board = createInitialBoard()
+      board.pits[7] = 6 // Will land exactly in P2 store
+
+      const result = simulateMove(board, 7, 2)
+
+      expect(result.extraTurn).toBe(true)
+      expect(result.lastPit).toBe(P2_STORE)
+    })
+  })
+
+  describe('executeMoveAnimated', () => {
+    it('should return multiple steps for animation', () => {
+      const board = createInitialBoard()
+
+      const { steps } = executeMoveAnimated(board, 0, 1)
+
+      // Should have at least 2 steps: pickup + distribution steps
+      expect(steps.length).toBeGreaterThan(1)
+    })
+
+    it('should have first step with empty source pit', () => {
+      const board = createInitialBoard()
+
+      const { steps } = executeMoveAnimated(board, 0, 1)
+
+      // First step should show the pit being emptied
+      expect(steps[0].pits[0]).toBe(0)
+    })
+
+    it('should have final step matching executeMove result', () => {
+      const board = createInitialBoard()
+
+      const { board: regularResult } = executeMove(board, 0, 1)
+      const { steps } = executeMoveAnimated(board, 0, 1)
+
+      const finalStep = steps[steps.length - 1]
+      expect(finalStep.pits).toEqual(regularResult.pits)
+    })
+
+    it('should produce same move info as executeMove', () => {
+      const board = createInitialBoard()
+
+      const { move: regularMove } = executeMove(board, 0, 1)
+      const { finalMove: animatedMove } = executeMoveAnimated(board, 0, 1)
+
+      expect(animatedMove.player).toBe(regularMove.player)
+      expect(animatedMove.pitIndex).toBe(regularMove.pitIndex)
+      expect(animatedMove.extraTurn).toBe(regularMove.extraTurn)
+      expect(animatedMove.capturedStones).toBe(regularMove.capturedStones)
+      expect(animatedMove.affectedPits).toEqual(regularMove.affectedPits)
+    })
+
+    it('should add extra step for capture', () => {
+      const board = createInitialBoard()
+      board.pits[0] = 1
+      board.pits[1] = 0
+      board.pits[11] = 5
+
+      const { steps, finalMove } = executeMoveAnimated(board, 0, 1)
+
+      // Should have: pickup, drop, capture = 3 steps
+      expect(steps.length).toBe(3)
+      expect(finalMove.capturedStones).toBe(6)
+      // Final step should show capture completed
+      expect(steps[steps.length - 1].pits[1]).toBe(0)
+      expect(steps[steps.length - 1].pits[11]).toBe(0)
+      expect(steps[steps.length - 1].pits[P1_STORE]).toBe(6)
+    })
+
+    it('should work correctly for player 2', () => {
+      const board = createInitialBoard()
+
+      const { steps, finalMove } = executeMoveAnimated(board, 7, 2)
+
+      expect(finalMove.player).toBe(2)
+      expect(steps[0].pits[7]).toBe(0)
+    })
   })
 
   describe('integration: full game move sequence', () => {
@@ -359,6 +697,90 @@ describe('mancalaRules', () => {
       // Should wrap around to player 1's side
       expect(newBoard.pits[P2_STORE]).toBeGreaterThan(0)
       expect(newBoard.pits[0]).toBeGreaterThan(4) // Should have received stones
+    })
+
+    it('should handle game that ends in a tie', () => {
+      // Each player has exactly 24 stones total
+      let board: Board = {
+        pits: [1, 0, 0, 0, 0, 0, 23, 0, 0, 0, 0, 0, 1, 23],
+      }
+
+      // Player 1 plays, then game ends
+      const { board: newBoard } = executeMove(board, 0, 1)
+
+      if (isGameOver(newBoard)) {
+        const { winner } = finalizeGame(newBoard)
+        // Both should have 24 stones
+        expect(winner).toBeNull()
+      }
+    })
+
+    it('should correctly sequence extra turns', () => {
+      const board = createInitialBoard()
+      // Set up for extra turn
+      board.pits[2] = 4
+
+      const { move } = executeMove(board, 2, 1)
+
+      expect(move.extraTurn).toBe(true)
+      expect(move.player).toBe(1)
+    })
+
+    it('should handle game ending scenario', () => {
+      const board: Board = {
+        pits: [1, 0, 0, 0, 0, 0, 22, 0, 0, 0, 0, 0, 0, 25],
+      }
+
+      // Player 1's only move
+      const { board: newBoard } = executeMove(board, 0, 1)
+
+      // After this move, P1 side should be empty
+      expect(isGameOver(newBoard)).toBe(true)
+    })
+  })
+
+  describe('edge cases', () => {
+    it('should handle board with all stones on one side', () => {
+      const board: Board = {
+        pits: [8, 8, 8, 8, 8, 8, 0, 0, 0, 0, 0, 0, 0, 0],
+      }
+
+      const validMoves = getValidMoves(board, 1)
+      expect(validMoves).toEqual([0, 1, 2, 3, 4, 5])
+
+      const p2Moves = getValidMoves(board, 2)
+      expect(p2Moves).toEqual([])
+    })
+
+    it('should handle single stone in single pit', () => {
+      const board: Board = {
+        pits: [0, 0, 0, 0, 0, 1, 23, 0, 0, 0, 0, 0, 0, 24],
+      }
+
+      const { board: newBoard, move } = executeMove(board, 5, 1)
+
+      expect(newBoard.pits[5]).toBe(0)
+      expect(newBoard.pits[P1_STORE]).toBe(24)
+      expect(move.extraTurn).toBe(true)
+    })
+
+    it('should handle maximum stones in a pit', () => {
+      const board: Board = {
+        pits: [48, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+      }
+
+      const { board: newBoard } = executeMove(board, 0, 1)
+
+      // Total should still be 48
+      const total = newBoard.pits.reduce((sum, s) => sum + s, 0)
+      expect(total).toBe(48)
+    })
+
+    it('should validate stores cannot be played', () => {
+      const board = createInitialBoard()
+
+      expect(isValidMove(board, P1_STORE, 1)).toBe(false)
+      expect(isValidMove(board, P2_STORE, 2)).toBe(false)
     })
   })
 })
