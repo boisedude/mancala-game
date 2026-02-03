@@ -13,6 +13,7 @@ interface PitProps {
   label?: string
   isPreviewActive?: boolean
   willReceiveStone?: boolean
+  previewStoneCount?: number
   isLastPit?: boolean
   isReducedMotion?: boolean
   isKeyboardActive?: boolean
@@ -28,6 +29,7 @@ export function Pit({
   label,
   isPreviewActive = false,
   willReceiveStone = false,
+  previewStoneCount = 0,
   isLastPit = false,
   isReducedMotion = false,
   isKeyboardActive = false,
@@ -113,26 +115,51 @@ export function Pit({
 
         {/* Stones visualization */}
         <div className="absolute inset-0 flex flex-wrap items-center justify-center gap-0.5 overflow-hidden p-2.5">
-          {stones > 0 && stones <= 12 ? (
-            // Show individual stones for small counts
-            Array.from({ length: stones }).map((_, i) => (
-              <Stone
-                key={i}
-                index={i}
-                isReducedMotion={isReducedMotion}
-                animationType={isPreviewActive && willReceiveStone ? 'land' : 'drop'}
-              />
-            ))
-          ) : stones > 12 ? (
-            // Show count for large numbers with enhanced styling
-            <div className="relative">
-              <span className="text-2xl font-bold text-amber-800/90 dark:text-amber-200/90 md:text-3xl drop-shadow-sm">
-                {stones}
-              </span>
-              {/* Glow effect for large numbers */}
-              <div className="absolute inset-0 blur-md bg-amber-500/20 rounded-full -z-10" />
-            </div>
-          ) : null}
+          {(() => {
+            const totalStones = stones + (isPreviewActive && willReceiveStone ? previewStoneCount : 0)
+
+            if (totalStones > 0 && totalStones <= 12) {
+              // Show individual stones for small counts
+              return (
+                <>
+                  {/* Current stones */}
+                  {Array.from({ length: stones }).map((_, i) => (
+                    <Stone
+                      key={i}
+                      index={i}
+                      isReducedMotion={isReducedMotion}
+                      animationType="drop"
+                    />
+                  ))}
+                  {/* Preview stones (semi-transparent) */}
+                  {isPreviewActive && willReceiveStone && Array.from({ length: previewStoneCount }).map((_, i) => (
+                    <Stone
+                      key={`preview-${i}`}
+                      index={stones + i}
+                      isReducedMotion={isReducedMotion}
+                      animationType="land"
+                      isPreview={true}
+                    />
+                  ))}
+                </>
+              )
+            } else if (totalStones > 12) {
+              // Show count for large numbers with enhanced styling
+              return (
+                <div className="relative">
+                  <span className="text-2xl font-bold text-amber-800/90 dark:text-amber-200/90 md:text-3xl drop-shadow-sm">
+                    {stones}
+                    {isPreviewActive && willReceiveStone && previewStoneCount > 0 && (
+                      <span className="text-blue-500/80 dark:text-blue-400/80">+{previewStoneCount}</span>
+                    )}
+                  </span>
+                  {/* Glow effect for large numbers */}
+                  <div className="absolute inset-0 blur-md bg-amber-500/20 rounded-full -z-10" />
+                </div>
+              )
+            }
+            return null
+          })()}
         </div>
 
         {/* Stone count badge - enhanced */}

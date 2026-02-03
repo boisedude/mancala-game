@@ -5,6 +5,7 @@ interface StoneProps {
   isReducedMotion?: boolean
   isAnimating?: boolean
   animationType?: 'drop' | 'idle' | 'sow' | 'land' | 'capture'
+  isPreview?: boolean
 }
 
 // Moved outside component to avoid recreation on every render
@@ -51,11 +52,21 @@ export function Stone({
   isReducedMotion = false,
   isAnimating = true,
   animationType = 'drop',
+  isPreview = false,
 }: StoneProps) {
   // Stagger animation delays for nice cascading effect (disabled if reduced motion)
   const delay = isReducedMotion ? 0 : index * 60
 
   const style = STONE_STYLES[index % STONE_STYLES.length]
+
+  // Preview stone style (blue-tinted, semi-transparent)
+  const previewStyle = {
+    gradient: 'from-blue-300 via-blue-400 to-blue-600',
+    highlight: 'bg-blue-200/60',
+    shadow: 'shadow-blue-700/40',
+  }
+
+  const activeStyle = isPreview ? previewStyle : style
 
   // Determine animation class based on type
   const getAnimationClass = () => {
@@ -86,19 +97,17 @@ export function Stone({
       className={`
         relative h-3.5 w-3.5 md:h-4 md:w-4
         rounded-full
-        bg-gradient-to-br ${style.gradient}
+        bg-gradient-to-br ${activeStyle.gradient}
         ${getAnimationClass()}
         transform-gpu
+        ${isPreview ? 'opacity-60 ring-1 ring-blue-400/50' : ''}
       `}
       style={{
         animationDelay: !isReducedMotion ? `${delay}ms` : undefined,
         transform: `translate(${offsetX}px, ${offsetY}px) rotate(${rotation}deg)`,
-        boxShadow: `
-          0 2px 4px rgba(0, 0, 0, 0.35),
-          0 1px 2px rgba(0, 0, 0, 0.25),
-          inset 0 -2px 4px rgba(0, 0, 0, 0.2),
-          inset 0 2px 4px rgba(255, 255, 255, 0.25)
-        `,
+        boxShadow: isPreview
+          ? `0 2px 4px rgba(59, 130, 246, 0.35), 0 1px 2px rgba(59, 130, 246, 0.25), inset 0 -2px 4px rgba(0, 0, 0, 0.2), inset 0 2px 4px rgba(255, 255, 255, 0.25)`
+          : `0 2px 4px rgba(0, 0, 0, 0.35), 0 1px 2px rgba(0, 0, 0, 0.25), inset 0 -2px 4px rgba(0, 0, 0, 0.2), inset 0 2px 4px rgba(255, 255, 255, 0.25)`,
       }}
     >
       {/* Highlight shine - top left */}
@@ -107,7 +116,7 @@ export function Stone({
           absolute left-0.5 top-0.5
           h-1.5 w-1.5 md:h-2 md:w-2
           rounded-full
-          ${style.highlight}
+          ${activeStyle.highlight}
           blur-[0.5px]
         `}
         style={{

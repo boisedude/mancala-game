@@ -197,6 +197,7 @@ export function simulateMove(
   player: Player
 ): {
   affectedPits: number[]
+  stoneCounts: Record<number, number>
   lastPit: number
   extraTurn: boolean
   capturedStones: number
@@ -208,6 +209,7 @@ export function simulateMove(
   let stones = board.pits[pitIndex]
   let currentPit = pitIndex
   const affectedPits: number[] = []
+  const stoneCounts: Record<number, number> = {}
 
   // Simulate distribution counter-clockwise
   while (stones > 0) {
@@ -217,6 +219,8 @@ export function simulateMove(
     if (currentPit === opponentStore) continue
 
     affectedPits.push(currentPit)
+    // Track how many stones each pit receives
+    stoneCounts[currentPit] = (stoneCounts[currentPit] || 0) + 1
     stones--
   }
 
@@ -237,6 +241,7 @@ export function simulateMove(
 
   return {
     affectedPits,
+    stoneCounts,
     lastPit,
     extraTurn,
     capturedStones,

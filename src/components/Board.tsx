@@ -36,6 +36,7 @@ export function Board({
   const [hoveredPit, setHoveredPit] = useState<number | null>(null)
   const [previewData, setPreviewData] = useState<{
     affectedPits: number[]
+    stoneCounts: Record<number, number>
     lastPit: number
     extraTurn: boolean
     willCapture: boolean
@@ -239,6 +240,7 @@ export function Board({
                     label={`${12 - pitIndex + 1}`}
                     isPreviewActive={hoveredPit !== null}
                     willReceiveStone={previewData?.affectedPits.includes(pitIndex) || false}
+                    previewStoneCount={previewData?.stoneCounts[pitIndex] || 0}
                     isLastPit={previewData?.lastPit === pitIndex}
                     isReducedMotion={isReducedMotion}
                     isKeyboardActive={activePit === pitIndex}
@@ -271,6 +273,7 @@ export function Board({
                     label={`${pitIndex + 1}`}
                     isPreviewActive={hoveredPit !== null}
                     willReceiveStone={previewData?.affectedPits.includes(pitIndex) || false}
+                    previewStoneCount={previewData?.stoneCounts[pitIndex] || 0}
                     isLastPit={previewData?.lastPit === pitIndex}
                     isReducedMotion={isReducedMotion}
                     isKeyboardActive={activePit === pitIndex}
