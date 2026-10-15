@@ -1,4 +1,4 @@
-// Pit component - individual playing pit with enhanced 3D carved effect
+// Pit: an oval cut into the wood, stones inside, the count as a quiet number below
 
 import { Stone } from './Stone'
 import { cn } from '@/lib/utils'
@@ -19,6 +19,8 @@ interface PitProps {
   isKeyboardActive?: boolean
 }
 
+const MAX_VISIBLE_STONES = 14
+
 export function Pit({
   stones,
   pitIndex,
@@ -34,155 +36,43 @@ export function Pit({
   isReducedMotion = false,
   isKeyboardActive = false,
 }: PitProps) {
+  const previewing = isPreviewActive && willReceiveStone
+
   return (
-    <div className="flex flex-col items-center gap-1 md:gap-2 group relative">
-      {label && (
-        <div className="text-xs font-medium text-muted-foreground opacity-50 transition-opacity group-hover:opacity-80">
-          {label}
-        </div>
+    <button
+      type="button"
+      onClick={onClick}
+      onMouseEnter={() => onHover?.(pitIndex)}
+      onMouseLeave={() => onHover?.(null)}
+      disabled={!isClickable}
+      className={cn(
+        'group flex min-h-11 w-full min-w-0 flex-col items-center gap-1 rounded-md bg-transparent p-0 outline-none',
+        isClickable ? 'cursor-pointer touch-manipulation' : 'cursor-default'
       )}
-
-      {/* Hover hint for clickable pits */}
-      {isClickable && isHighlighted && (
-        <div className="absolute -top-6 z-10 hidden group-hover:block">
-          <div className="rounded-md bg-primary px-2 py-1 text-xs font-medium text-primary-foreground shadow-lg whitespace-nowrap">
-            Click to play
-          </div>
-        </div>
-      )}
-
-      <button
-        onClick={onClick}
-        onMouseEnter={() => onHover?.(pitIndex)}
-        onMouseLeave={() => onHover?.(null)}
-        disabled={!isClickable}
+      aria-label={`Pit ${label ?? pitIndex + 1} with ${stones} stones${isClickable ? ', click to play' : ', not playable'}`}
+      aria-disabled={!isClickable}
+      tabIndex={isClickable ? 0 : -1}
+    >
+      <span
         className={cn(
-          // Base sizing and shape
-          'relative h-20 w-20 rounded-[1.25rem] md:h-24 md:w-24 md:rounded-[1.5rem]',
-          // Premium carved pit effect with wood tones
-          'bg-gradient-to-br from-amber-200 via-amber-300 to-amber-400',
-          'dark:from-amber-800 dark:via-amber-900 dark:to-amber-950',
-          // Deep carved shadow effect
-          'pit-carved',
-          // Border styling
-          'border-2 border-amber-400/50 dark:border-amber-700/50',
-          // Content layout
-          'flex flex-wrap items-center justify-center gap-0.5 p-2',
-          // Smooth transitions
-          'transition-all duration-300 ease-out transform-gpu',
-          // Focus styling
-          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2',
-          // Clickable state animations
-          isClickable &&
-            !isReducedMotion &&
-            `cursor-pointer touch-manipulation
-             hover:scale-105 hover:border-primary hover:shadow-xl
-             hover:shadow-primary/25 active:scale-95`,
-          isClickable &&
-            isReducedMotion &&
-            'cursor-pointer touch-manipulation hover:border-primary hover:shadow-xl hover:shadow-primary/25',
-          // Highlighted state (valid move)
-          isHighlighted && [
-            'ring-2 ring-primary/70 ring-offset-2 shadow-lg',
-            !isReducedMotion && 'animate-pit-glow',
-          ],
-          // Disabled states
-          !isClickable && stones === 0 && 'cursor-not-allowed opacity-40',
-          !isClickable && stones > 0 && 'cursor-not-allowed opacity-60 grayscale-[30%]',
-          // Preview states
-          isPreviewActive && willReceiveStone && [
-            'ring-2 ring-blue-400/60 shadow-blue-400/30 shadow-lg',
-            'bg-gradient-to-br from-blue-100/20 via-amber-200 to-amber-300',
-            'dark:from-blue-900/20 dark:via-amber-800 dark:to-amber-900',
-          ],
-          isPreviewActive && isLastPit && [
-            'ring-2 ring-green-500/70 ring-offset-2 shadow-green-500/40 shadow-xl',
-            'bg-gradient-to-br from-green-100/30 via-amber-200 to-amber-300',
-            'dark:from-green-900/30 dark:via-amber-800 dark:to-amber-900',
-          ],
-          // Keyboard navigation
-          isKeyboardActive && 'ring-2 ring-yellow-400/80 ring-offset-2 dark:ring-yellow-500/80'
+          'relative flex aspect-[4/5] w-full flex-wrap content-center items-center justify-center gap-[2px] overflow-hidden rounded-[50%] p-[18%] sm:gap-1',
+          'bg-[#4a3019] shadow-[inset_0_4px_8px_rgba(0,0,0,0.6),inset_0_-1px_0_rgba(255,255,255,0.07)]',
+          'ring-0 ring-primary transition-shadow',
+          isClickable && isHighlighted && 'ring-1',
+          isClickable && 'group-hover:ring-2 group-focus-visible:ring-2',
+          isKeyboardActive && 'ring-2',
+          !isClickable && previewing && 'ring-1 ring-primary/40',
+          isPreviewActive && isLastPit && 'ring-2'
         )}
-        aria-label={`Pit ${pitIndex + 1} with ${stones} stones${isClickable ? ', click to play' : ', not playable'}`}
-        aria-disabled={!isClickable}
-        tabIndex={isClickable ? 0 : -1}
       >
-        {/* Inner carved effect overlay */}
-        <div className="absolute inset-1 rounded-[1rem] md:rounded-[1.25rem] bg-gradient-to-br from-black/5 via-transparent to-white/5 pointer-events-none" />
-
-        {/* Subtle inner ring for depth */}
-        <div className="absolute inset-1.5 rounded-[0.875rem] md:rounded-[1.125rem] border border-amber-500/20 dark:border-amber-600/20 pointer-events-none" />
-
-        {/* Stones visualization */}
-        <div className="absolute inset-0 flex flex-wrap items-center justify-center gap-0.5 overflow-hidden p-2.5">
-          {(() => {
-            const totalStones = stones + (isPreviewActive && willReceiveStone ? previewStoneCount : 0)
-
-            if (totalStones > 0 && totalStones <= 12) {
-              // Show individual stones for small counts
-              return (
-                <>
-                  {/* Current stones */}
-                  {Array.from({ length: stones }).map((_, i) => (
-                    <Stone
-                      key={i}
-                      index={i}
-                      isReducedMotion={isReducedMotion}
-                      animationType="drop"
-                    />
-                  ))}
-                  {/* Preview stones (semi-transparent) */}
-                  {isPreviewActive && willReceiveStone && Array.from({ length: previewStoneCount }).map((_, i) => (
-                    <Stone
-                      key={`preview-${i}`}
-                      index={stones + i}
-                      isReducedMotion={isReducedMotion}
-                      animationType="land"
-                      isPreview={true}
-                    />
-                  ))}
-                </>
-              )
-            } else if (totalStones > 12) {
-              // Show count for large numbers with enhanced styling
-              return (
-                <div className="relative">
-                  <span className="text-2xl font-bold text-amber-800/90 dark:text-amber-200/90 md:text-3xl drop-shadow-sm">
-                    {stones}
-                    {isPreviewActive && willReceiveStone && previewStoneCount > 0 && (
-                      <span className="text-blue-500/80 dark:text-blue-400/80">+{previewStoneCount}</span>
-                    )}
-                  </span>
-                  {/* Glow effect for large numbers */}
-                  <div className="absolute inset-0 blur-md bg-amber-500/20 rounded-full -z-10" />
-                </div>
-              )
-            }
-            return null
-          })()}
-        </div>
-
-        {/* Stone count badge - enhanced */}
-        {stones > 0 && stones <= 12 && (
-          <div className="absolute -right-2 -top-2 flex h-6 w-6 items-center justify-center rounded-full bg-gradient-to-br from-primary to-primary/80 text-xs font-bold text-primary-foreground shadow-lg md:h-7 md:w-7 md:text-sm border border-primary-foreground/20">
-            {stones}
-          </div>
-        )}
-
-        {/* Empty pit indicator - more subtle */}
-        {stones === 0 && (
-          <div className="absolute inset-0 flex items-center justify-center">
-            <span className="text-xs font-medium text-amber-600/40 dark:text-amber-400/30">
-              Empty
-            </span>
-          </div>
-        )}
-
-        {/* Ambient highlight effect on hover */}
-        {isClickable && (
-          <div className="absolute inset-0 rounded-[1.25rem] md:rounded-[1.5rem] opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none bg-gradient-to-t from-transparent via-transparent to-white/10" />
-        )}
-      </button>
-    </div>
+        {Array.from({ length: Math.min(stones, MAX_VISIBLE_STONES) }).map((_, i) => (
+          <Stone key={i} index={i} isReducedMotion={isReducedMotion} />
+        ))}
+      </span>
+      <span className="text-xs tabular-nums text-foreground/75 sm:text-sm">
+        {stones}
+        {previewing && previewStoneCount > 0 && <span className="text-primary"> +{previewStoneCount}</span>}
+      </span>
+    </button>
   )
 }

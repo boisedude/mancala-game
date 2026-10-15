@@ -1,10 +1,6 @@
 import { Route, Routes } from 'react-router-dom'
 import { ErrorBoundary, FallbackProps } from 'react-error-boundary'
 import MancalaGame from './pages/MancalaGame'
-import HomePage from './pages/HomePage'
-import AboutPage from './pages/AboutPage'
-import HistoryPage from './pages/HistoryPage'
-import GraphicsShowcase from './pages/GraphicsShowcase'
 
 function ErrorFallback({ error }: FallbackProps) {
   return (
@@ -30,10 +26,6 @@ function App() {
     <ErrorBoundary FallbackComponent={ErrorFallback}>
       <Routes>
         <Route path="/" element={<MancalaGame />} />
-        <Route path="/history" element={<HistoryPage />} />
-        <Route path="/graphics" element={<GraphicsShowcase />} />
-        <Route path="/template" element={<HomePage />} />
-        <Route path="/about" element={<AboutPage />} />
       </Routes>
     </ErrorBoundary>
   )

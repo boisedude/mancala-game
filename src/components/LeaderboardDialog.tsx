@@ -1,4 +1,4 @@
-// Leaderboard dialog - displays player stats
+// Stats dialog: running record and achievements as plain rows
 
 import {
   Dialog,
@@ -8,9 +8,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
 import type { LeaderboardEntry, Achievement } from '@/types/mancala.types'
-import { Share1Icon, ResetIcon, LockClosedIcon } from '@radix-ui/react-icons'
 
 interface LeaderboardDialogProps {
   open: boolean
@@ -32,8 +30,8 @@ export function LeaderboardDialog({
   const winRate =
     stats.totalGamesPlayed > 0 ? ((stats.wins / stats.totalGamesPlayed) * 100).toFixed(1) : '0.0'
 
-  const unlockedAchievements = achievements.filter(a => a.unlockedAt !== null)
-  const lockedAchievements = achievements.filter(a => a.unlockedAt === null)
+  const unlocked = achievements.filter(a => a.unlockedAt !== null)
+  const locked = achievements.filter(a => a.unlockedAt === null)
 
   const formatTime = (seconds: number) => {
     if (seconds === Infinity) return 'N/A'
@@ -46,109 +44,59 @@ export function LeaderboardDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle className="text-2xl">Your Stats</DialogTitle>
-          <DialogDescription>Track your Mancala performance over time</DialogDescription>
+          <DialogTitle className="text-xl">Your stats</DialogTitle>
+          <DialogDescription>Your Mancala record on this device</DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-3">
-          {/* Main Stats Grid */}
-          <div className="grid grid-cols-2 gap-3">
-            <StatCard label="Wins" value={stats.wins} />
-            <StatCard label="Losses" value={stats.losses} />
-            <StatCard label="Win Rate" value={`${winRate}%`} />
-            <StatCard label="Games Played" value={stats.totalGamesPlayed} />
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <StatRow label="Wins" value={stats.wins} />
+            <StatRow label="Losses" value={stats.losses} />
+            <StatRow label="Win rate" value={`${winRate}%`} />
+            <StatRow label="Games played" value={stats.totalGamesPlayed} />
+            <StatRow label="Current streak" value={`${stats.winStreak} wins`} />
+            <StatRow label="Highest capture" value={`${stats.highestCapture} stones`} />
+            <StatRow label="Fastest win" value={formatTime(stats.fastestWin)} />
           </div>
 
-          {/* Additional Stats */}
-          <Card className="bg-gradient-to-br from-primary/10 to-primary/5">
-            <CardContent className="space-y-3 pt-6">
-              <StatRow label="Current Streak" value={`${stats.winStreak} wins`} />
-              <StatRow label="Highest Capture" value={`${stats.highestCapture} stones`} />
-              <StatRow label="Fastest Win" value={formatTime(stats.fastestWin)} />
-            </CardContent>
-          </Card>
-
-          {/* Achievements Section */}
           {achievements.length > 0 && (
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm font-semibold">
-                  Achievements ({unlockedAchievements.length}/{achievements.length})
-                </h3>
-              </div>
-
-              {/* Unlocked Achievements */}
-              {unlockedAchievements.length > 0 && (
-                <div className="space-y-2">
-                  {unlockedAchievements.map(achievement => (
-                    <Card key={achievement.id} className="bg-gradient-to-r from-yellow-50 to-amber-50 dark:from-yellow-950 dark:to-amber-950">
-                      <CardContent className="flex items-center gap-3 p-3">
-                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-yellow-400 text-xl dark:bg-yellow-600">
-                          {achievement.icon}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="font-semibold text-sm">{achievement.name}</div>
-                          <div className="text-xs text-muted-foreground truncate">
-                            {achievement.description}
-                          </div>
-                          {achievement.progress !== undefined && achievement.target && (
-                            <div className="text-xs text-primary mt-1">
-                              {achievement.progress}/{achievement.target}
-                            </div>
-                          )}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              )}
-
-              {/* Locked Achievements (show first 3) */}
-              {lockedAchievements.length > 0 && (
-                <div className="space-y-2">
-                  {lockedAchievements.slice(0, 3).map(achievement => (
-                    <Card key={achievement.id} className="opacity-60">
-                      <CardContent className="flex items-center gap-3 p-3">
-                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
-                          <LockClosedIcon className="h-5 w-5" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="font-semibold text-sm text-muted-foreground">???</div>
-                          <div className="text-xs text-muted-foreground truncate">
-                            {achievement.description}
-                          </div>
-                          {achievement.progress !== undefined && achievement.target && (
-                            <div className="text-xs text-muted-foreground mt-1">
-                              {achievement.progress}/{achievement.target}
-                            </div>
-                          )}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                  {lockedAchievements.length > 3 && (
-                    <p className="text-center text-xs text-muted-foreground">
-                      +{lockedAchievements.length - 3} more to unlock
-                    </p>
-                  )}
-                </div>
+            <div className="space-y-2 border-t pt-4">
+              <h3 className="text-sm font-semibold">
+                Achievements ({unlocked.length}/{achievements.length})
+              </h3>
+              <ul className="space-y-2">
+                {unlocked.map(a => (
+                  <li key={a.id} className="text-sm">
+                    <span className="font-medium">{a.name}</span>
+                    <span className="block text-xs text-muted-foreground">{a.description}</span>
+                  </li>
+                ))}
+                {locked.slice(0, 3).map(a => (
+                  <li key={a.id} className="text-sm text-muted-foreground">
+                    <span className="block">Locked</span>
+                    <span className="block text-xs">
+                      {a.description}
+                      {a.progress !== undefined && a.target ? ` (${a.progress}/${a.target})` : ''}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+              {locked.length > 3 && (
+                <p className="text-xs text-muted-foreground">+{locked.length - 3} more to unlock</p>
               )}
             </div>
           )}
 
-          {/* Actions */}
           <div className="flex gap-2 pt-2">
-            <Button onClick={onShare} variant="outline" className="flex-1 gap-2">
-              <Share1Icon className="h-4 w-4" />
+            <Button onClick={onShare} variant="outline" className="h-11 flex-1">
               Share
             </Button>
             <Button
               onClick={onReset}
               variant="outline"
-              className="flex-1 gap-2 text-destructive hover:text-destructive"
+              className="h-11 flex-1 text-destructive hover:text-destructive"
             >
-              <ResetIcon className="h-4 w-4" />
-              Reset Stats
+              Reset stats
             </Button>
           </div>
         </div>
@@ -157,22 +105,11 @@ export function LeaderboardDialog({
   )
 }
 
-function StatCard({ label, value }: { label: string; value: string | number }) {
-  return (
-    <Card>
-      <CardContent className="pt-6 text-center">
-        <div className="text-3xl font-bold text-primary">{value}</div>
-        <div className="mt-1 text-sm text-muted-foreground">{label}</div>
-      </CardContent>
-    </Card>
-  )
-}
-
-function StatRow({ label, value }: { label: string; value: string }) {
+function StatRow({ label, value }: { label: string; value: string | number }) {
   return (
     <div className="flex items-center justify-between">
       <span className="text-sm text-muted-foreground">{label}</span>
-      <span className="text-sm font-semibold">{value}</span>
+      <span className="text-sm font-semibold tabular-nums">{value}</span>
     </div>
   )
 }

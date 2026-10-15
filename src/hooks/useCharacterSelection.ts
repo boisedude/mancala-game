@@ -1,5 +1,4 @@
-import { useMemo, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useMemo } from 'react';
 import type { Character, CharacterId } from '@shared/characters';
 import { getCharacterById } from '@shared/characters';
 import type { Difficulty } from '@/types/mancala.types';
@@ -9,45 +8,41 @@ export interface CharacterSelection {
   characterId: CharacterId;
 }
 
+const difficultyToCharacter: Record<Difficulty, CharacterId> = {
+  easy: 'bella',
+  medium: 'coop',
+  hard: 'bentley',
+};
+
+const characterToDifficulty: Record<CharacterId, Difficulty> = {
+  bella: 'easy',
+  coop: 'medium',
+  bentley: 'hard',
+};
+
 /**
- * Hook to manage character selection based on URL parameters or difficulty setting
- * Maps URL parameter ?character=bella|coop|bentley to appropriate character
- * Also maps difficulty to character (bella=easy, coop=medium, bentley=hard)
+ * Read ?character=bella|coop|bentley from the real query string. The app uses a
+ * HashRouter and the arcade links to index.html?character=x (query before the
+ * hash), so React Router's useSearchParams never sees it.
+ */
+export function getCharacterIdFromUrl(search: string = window.location.search): CharacterId | null {
+  const value = new URLSearchParams(search).get('character');
+  return value && Object.prototype.hasOwnProperty.call(characterToDifficulty, value) ? (value as CharacterId) : null;
+}
+
+/** Difficulty implied by the URL parameter, or null when absent/invalid. */
+export function getDifficultyFromUrl(search: string = window.location.search): Difficulty | null {
+  const id = getCharacterIdFromUrl(search);
+  return id ? characterToDifficulty[id] : null;
+}
+
+/**
+ * The displayed opponent is always derived from the game's difficulty, which is
+ * the single source of truth (it is seeded from the URL on load and changed by
+ * the dropdown).
  */
 export function useCharacterSelection(difficulty: Difficulty): CharacterSelection {
-  const [searchParams, setSearchParams] = useSearchParams();
-
-  // Get character from URL parameter or map from difficulty
-  const characterId = useMemo<CharacterId>(() => {
-    const urlCharacter = searchParams.get('character');
-
-    // If valid character in URL, use it
-    if (urlCharacter && (urlCharacter === 'bella' || urlCharacter === 'coop' || urlCharacter === 'bentley')) {
-      return urlCharacter as CharacterId;
-    }
-
-    // Otherwise, map difficulty to character
-    const difficultyMap: Record<Difficulty, CharacterId> = {
-      easy: 'bella',
-      medium: 'coop',
-      hard: 'bentley',
-    };
-
-    return difficultyMap[difficulty];
-  }, [searchParams, difficulty]);
-
-  // Sync URL parameter when character changes
-  useEffect(() => {
-    const currentUrlCharacter = searchParams.get('character');
-    if (currentUrlCharacter !== characterId) {
-      setSearchParams({ character: characterId }, { replace: true });
-    }
-  }, [characterId, searchParams, setSearchParams]);
-
+  const characterId = difficultyToCharacter[difficulty];
   const character = useMemo(() => getCharacterById(characterId), [characterId]);
-
-  return {
-    character,
-    characterId,
-  };
+  return { character, characterId };
 }

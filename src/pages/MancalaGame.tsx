@@ -1,7 +1,6 @@
 // Main Mancala game page
 
-import { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
+import { useState, useEffect, useRef } from 'react'
 import { Board } from '@/components/Board'
 import { GameControls } from '@/components/GameControls'
 import { LeaderboardDialog } from '@/components/LeaderboardDialog'
@@ -9,13 +8,12 @@ import { VictoryDialog } from '@/components/VictoryDialog'
 import { ContinueGameDialog } from '@/components/ContinueGameDialog'
 import { Tutorial } from '@/components/Tutorial'
 import { HowToPlayDialog } from '@/components/HowToPlayDialog'
-import { AudioControls } from '@/components/AudioControls'
 import { KeyboardShortcutsDialog } from '@/components/KeyboardShortcutsDialog'
 import { AriaAnnouncer } from '@/components/AriaAnnouncer'
 import { SettingsDialog } from '@/components/SettingsDialog'
 import { GameStatistics } from '@/components/GameStatistics'
 import { MoveHistory } from '@/components/MoveHistory'
-import { Confetti } from '@/components/Confetti'
+import { OpponentChip } from '@/components/OpponentChip'
 import { Button } from '@/components/ui/button'
 import { useMancalaGame } from '@/hooks/useMancalaGame'
 import { useLeaderboard } from '@/hooks/useLeaderboard'
@@ -26,18 +24,18 @@ import { useKeyboardControls } from '@/hooks/useKeyboardControls'
 import { useAchievements } from '@/hooks/useAchievements'
 import { useGameSettings } from '@/hooks/useGameSettings'
 import { useHapticFeedback } from '@/hooks/useHapticFeedback'
-import { useCharacterSelection } from '@/hooks/useCharacterSelection'
-import { useBentleyStats } from '@/hooks/useBentleyStats'
+import { useCharacterSelection, getCharacterIdFromUrl, getDifficultyFromUrl } from '@/hooks/useCharacterSelection'
+import { recordPlayerBeatBentley, recordBentleyBeatPlayer } from '@shared/arcadeRecord'
 import { AchievementToast } from '@/components/AchievementToast'
 import { P1_STORE, P2_STORE } from '@/lib/mancalaRules'
 import { STORAGE_KEYS } from '@/lib/storageKeys'
 import { UI_TIMING } from '@/lib/constants'
 import type { Difficulty } from '@/types/mancala.types'
-import { QuestionMarkCircledIcon } from '@radix-ui/react-icons'
+import { ArrowLeftIcon, VolumeIcon, VolumeOffIcon, HelpIcon } from '@shared/icons'
 import type { SavedGame } from '@/hooks/useGamePersistence'
-import { MancalaLogo } from '@/components/graphics'
 
 export default function MancalaGame() {
+  const [initialDifficulty] = useState<Difficulty>(() => getDifficultyFromUrl() ?? 'medium')
   const { settings, updateSetting, resetSettings, getAnimationDelay } = useGameSettings()
   const { vibrate } = useHapticFeedback(settings.hapticFeedback)
 
@@ -53,14 +51,14 @@ export default function MancalaGame() {
     setMode,
     getValidMovesForCurrentPlayer,
     restoreGameState,
-  } = useMancalaGame(getAnimationDelay())
+  } = useMancalaGame(getAnimationDelay(), initialDifficulty)
 
   const { playerName, stats, recordGame, resetStats } = useLeaderboard()
   const { isMuted, toggleMute, playSound } = useGameAudio()
   const { saveGame, loadGame, clearSavedGame, abandonGame } = useGamePersistence()
   const { isReducedMotion } = useReducedMotion()
   const { character, characterId } = useCharacterSelection(gameState.difficulty)
-  const bentleyStats = useBentleyStats()
+  const arcadeRecordPostedRef = useRef(false)
   const {
     recentlyUnlocked,
     trackCapture,
@@ -75,9 +73,9 @@ export default function MancalaGame() {
   const [showVictory, setShowVictory] = useState(false)
   const [showTutorial, setShowTutorial] = useState(false)
   const [showHowToPlay, setShowHowToPlay] = useState(false)
+  const [welcomeOpen, setWelcomeOpen] = useState(false)
   const [showContinueDialog, setShowContinueDialog] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
-  const [showConfetti, setShowConfetti] = useState(false)
   const [savedGameData, setSavedGameData] = useState<SavedGame | null>(null)
   const [gameStartTime, setGameStartTime] = useState<number>(0)
   const [highestCaptureThisGame, setHighestCaptureThisGame] = useState(0)
@@ -96,20 +94,30 @@ export default function MancalaGame() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []) // Only run on mount
 
-  // Check if this is the user's first time and show a helpful dialog
+  // First visit only: show the welcome dialog once. Never auto-open it when the
+  // page was loaded with ?character= (the arcade sends players straight to a match).
   useEffect(() => {
-    const hasSeenWelcome = localStorage.getItem(STORAGE_KEYS.SEEN_WELCOME)
-    const tutorialCompleted = localStorage.getItem(STORAGE_KEYS.TUTORIAL_COMPLETED)
-
-    // Show How to Play dialog for first-time users who haven't seen welcome or completed tutorial
-    if (!hasSeenWelcome && !tutorialCompleted && gameState.status === 'setup') {
-      // Delay to allow the page to load first
-      setTimeout(() => {
-        setShowHowToPlay(true)
-        localStorage.setItem(STORAGE_KEYS.SEEN_WELCOME, 'true')
-      }, UI_TIMING.WELCOME_DIALOG_DELAY)
+    if (getCharacterIdFromUrl()) return
+    let seen = false
+    let completed = false
+    try {
+      seen = !!localStorage.getItem(STORAGE_KEYS.SEEN_WELCOME)
+      completed = !!localStorage.getItem(STORAGE_KEYS.TUTORIAL_COMPLETED)
+    } catch {
+      return
     }
-  }, [gameState.status])
+    if (seen || completed || showContinueDialog) return
+    const timer = setTimeout(() => {
+      setShowHowToPlay(true)
+      setWelcomeOpen(true)
+      try {
+        localStorage.setItem(STORAGE_KEYS.SEEN_WELCOME, 'true')
+      } catch {
+        // storage unavailable
+      }
+    }, UI_TIMING.WELCOME_DIALOG_DELAY)
+    return () => clearTimeout(timer)
+  }, [showContinueDialog])
 
   // Track game start time
   useEffect(() => {
@@ -213,6 +221,7 @@ export default function MancalaGame() {
   useEffect(() => {
     if (gameState.status === 'playing') {
       setGameOverHandled(false)
+      arcadeRecordPostedRef.current = false
     }
   }, [gameState.status])
 
@@ -225,13 +234,11 @@ export default function MancalaGame() {
       const playerScore = gameState.board.pits[P1_STORE]
       const opponentScore = gameState.board.pits[P2_STORE]
 
-      // Play victory or defeat sound and trigger confetti
+      // Play victory or defeat sound
       if (playerWon) {
         playSound('victory')
         if (settings.showVictoryCelebration) {
-          setShowConfetti(true)
           vibrate('success')
-          setTimeout(() => setShowConfetti(false), UI_TIMING.CONFETTI_DURATION)
         }
       } else {
         playSound('defeat')
@@ -240,12 +247,18 @@ export default function MancalaGame() {
 
       recordGame(playerWon, gameDuration, highestCaptureThisGame)
 
-      // Track Bentley stats when playing against Bentley
-      if (characterId === 'bentley') {
+      // Arcade-wide Bentley record: vs-AI games against Bentley with a decisive result, once per game
+      if (
+        gameState.mode === 'vsAI' &&
+        characterId === 'bentley' &&
+        gameState.winner !== null &&
+        !arcadeRecordPostedRef.current
+      ) {
+        arcadeRecordPostedRef.current = true
         if (playerWon) {
-          bentleyStats.recordLoss() // Player won, so Bentley lost
+          void recordPlayerBeatBentley()
         } else {
-          bentleyStats.recordWin() // Player lost, so Bentley won
+          void recordBentleyBeatPlayer()
         }
       }
 
@@ -256,9 +269,14 @@ export default function MancalaGame() {
       clearSavedGame()
 
       // Announce game result
-      const winnerName =
-        gameState.winner === 1 ? playerName : gameState.mode === 'vsHuman' ? 'Player 2' : character.name
-      const announcement = `Game over! ${winnerName} wins with ${playerWon ? playerScore : opponentScore} stones to ${playerWon ? opponentScore : playerScore}.`
+      const winnerScore = Math.max(playerScore, opponentScore)
+      const loserScore = Math.min(playerScore, opponentScore)
+      const announcement =
+        gameState.winner === null
+          ? `Game over! It's a tie, ${playerScore} stones to ${opponentScore}.`
+          : `Game over! ${
+              playerWon ? playerName : gameState.mode === 'vsHuman' ? 'Player 2' : character.name
+            } wins with ${winnerScore} stones to ${loserScore}.`
       setAriaMessage(announcement)
       setAriaPriority('assertive')
 
@@ -273,7 +291,6 @@ export default function MancalaGame() {
     gameOverHandled,
     characterId,
     character,
-    bentleyStats,
     recordGame,
     trackGameResult,
     clearSavedGame,
@@ -388,67 +405,123 @@ export default function MancalaGame() {
     gameStatus: gameState.status,
   })
 
+  const isVsHuman = gameState.mode === 'vsHuman'
+  const opponent = isVsHuman ? 'Player 2' : character.name
+  const inSetup = gameState.status === 'setup'
+  const lastMoveGoesAgain =
+    gameState.lastMove?.extraTurn === true && gameState.lastMove.player === gameState.currentPlayer
+
+  let turnText: string
+  let turnActive: 'you' | 'opponent' | 'over'
+  if (inSetup) {
+    turnText = isStartingGame ? 'Setting up' : 'Ready'
+    turnActive = 'you'
+  } else if (gameState.status === 'finished') {
+    turnText =
+      gameState.winner === null ? 'Draw' : gameState.winner === 1 ? 'You won' : `${opponent} won`
+    turnActive = 'over'
+  } else if (gameState.currentPlayer === 1) {
+    turnText = lastMoveGoesAgain ? 'Go again' : isVsHuman ? "Player 1's turn" : 'Your turn'
+    turnActive = 'you'
+  } else {
+    turnText = isVsHuman
+      ? lastMoveGoesAgain
+        ? 'Player 2 goes again'
+        : "Player 2's turn"
+      : `${opponent} is thinking`
+    turnActive = 'opponent'
+  }
+
+  const validMoves = inSetup ? [] : getValidMovesForCurrentPlayer()
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-rose-50 px-4 py-8 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
-      {/* Return to Arcade Button - Fixed position with responsive positioning */}
-      <div className="fixed left-2 top-2 z-10 sm:left-4 sm:top-4">
-        <a
-          href="https://www.mcooper.com/arcade"
-          className="flex items-center gap-1.5 rounded-lg bg-blue-600 px-2.5 py-1.5 text-xs font-semibold text-white shadow-lg transition-all hover:bg-blue-700 hover:shadow-xl sm:gap-2 sm:px-4 sm:py-2 sm:text-sm"
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <path d="M19 12H5M12 19l-7-7 7-7" />
-          </svg>
-          Return to Arcade
-        </a>
-      </div>
+    <div className="arcade-page">
+      <a
+        href="#game-board"
+        className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-md focus:bg-card focus:px-4 focus:py-2 focus:text-sm focus:text-foreground"
+      >
+        Skip to game board
+      </a>
 
       {/* ARIA Live Region for Screen Reader Announcements */}
       <AriaAnnouncer message={ariaMessage} priority={ariaPriority} />
 
-      <div className="mx-auto max-w-6xl space-y-6">
-        {/* Header */}
-        <header className="relative space-y-2 text-center">
-          {/* Audio Controls - positioned in top right */}
-          <div className="absolute right-0 top-0">
-            <AudioControls isMuted={isMuted} onToggleMute={toggleMute} />
-          </div>
-
-          <h1 className="bg-gradient-to-r from-amber-600 to-rose-600 bg-clip-text text-4xl font-bold text-transparent dark:from-amber-400 dark:to-rose-400 md:text-5xl">
-            Mancala
-          </h1>
-          <p className="text-base font-medium text-muted-foreground">
-            Ancient Strategy Game
-          </p>
-          <Link
-            to="/history"
-            className="inline-block text-sm text-amber-600 hover:text-amber-700 hover:underline dark:text-amber-400 dark:hover:text-amber-300"
+      <header className="arcade-topbar">
+        <div className="flex flex-1 items-center">
+          <a
+            href="https://www.mcooper.com/arcade/"
+            className="inline-flex min-h-11 items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
           >
-            📜 Learn about the game's history
-          </Link>
-          <div className="inline-flex items-center gap-2 rounded-full border border-green-500/30 bg-green-500/10 px-4 py-1.5 text-sm font-semibold text-green-600 dark:text-green-400">
-            <span>🏆</span>
-            <span>Goal: Capture More Stones to Win!</span>
-          </div>
-        </header>
+            <ArrowLeftIcon size={18} />
+            Arcade
+          </a>
+        </div>
+        <h1 className="arcade-display sr-only text-xl sm:not-sr-only">Mancala</h1>
+        <div className="flex flex-1 items-center justify-end gap-1">
+          {!isVsHuman && (
+            <OpponentChip
+              character={character}
+              difficulty={gameState.difficulty}
+              onDifficultyChange={handleDifficultyChange}
+            />
+          )}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-11 w-11 shrink-0"
+            onClick={toggleMute}
+            aria-label={isMuted ? 'Unmute sound effects' : 'Mute sound effects'}
+          >
+            {isMuted ? <VolumeOffIcon /> : <VolumeIcon />}
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-11 w-11 shrink-0"
+            onClick={() => setShowHowToPlay(true)}
+            aria-label="How to play"
+          >
+            <HelpIcon />
+          </Button>
+        </div>
+      </header>
 
-        {/* Game Controls */}
+      <main className="arcade-stage">
+        <div className="arcade-score" aria-live="polite">
+          <div>
+            <strong>{gameState.board.pits[P1_STORE]}</strong>
+            {isVsHuman ? 'Player 1' : 'You'}
+          </div>
+          <div className="arcade-turn" data-active={turnActive}>
+            {turnText}
+          </div>
+          <div>
+            <strong>{gameState.board.pits[P2_STORE]}</strong>
+            {opponent}
+          </div>
+        </div>
+
+        <div id="game-board" className="flex w-full justify-center">
+          <Board
+            board={gameState.board}
+            currentPlayer={gameState.currentPlayer}
+            validMoves={validMoves}
+            onPitClick={handleMakeMove}
+            isAIThinking={isAIThinking}
+            isAnimating={isAnimating}
+            playerName={isVsHuman ? 'Player 1' : 'You'}
+            gameMode={gameState.mode}
+            activePit={activePit}
+            isReducedMotion={isReducedMotion}
+            opponentName={opponent}
+          />
+        </div>
+
         <GameControls
-          difficulty={gameState.difficulty}
-          gameMode={gameState.mode}
           gameStatus={gameState.status}
-          onNewGame={gameState.status === 'setup' ? handleStartGame : handleNewGame}
-          onDifficultyChange={handleDifficultyChange}
+          gameMode={gameState.mode}
+          opponentName={character.name}
+          onNewGame={inSetup ? handleStartGame : handleNewGame}
           onModeChange={handleModeChange}
           onShowLeaderboard={() => setShowLeaderboard(true)}
           onShowHowToPlay={() => setShowHowToPlay(true)}
@@ -457,205 +530,34 @@ export default function MancalaGame() {
           canUndo={gameState.undoState !== null && gameState.currentPlayer === 2}
         />
 
-        {/* Player Turn Prompt - Enhanced */}
-        {gameState.status === 'playing' && !isAIThinking && (
-          <div className="mx-auto max-w-4xl">
-            <div className="rounded-xl border-2 border-blue-400 bg-gradient-to-r from-blue-50 to-blue-100 p-4 text-center duration-300 animate-in fade-in shadow-lg dark:border-blue-600 dark:from-blue-950/50 dark:to-blue-900/30">
-              <div className="flex items-center justify-center gap-3">
-                <span className="text-2xl animate-bounce">👆</span>
-                <p className="text-base font-bold text-blue-900 dark:text-blue-100">
-                  {gameState.currentPlayer === 1
-                    ? 'Your Turn! Click any highlighted pit on the bottom row'
-                    : gameState.mode === 'vsHuman'
-                      ? "Player 2's Turn! Click any highlighted pit on the top row"
-                      : null}
-                </p>
-              </div>
-              {gameState.currentPlayer === 1 && (
-                <p className="mt-2 text-xs text-blue-700 dark:text-blue-300">
-                  💡 Tip: Hover over pits to preview your move
-                </p>
-              )}
-            </div>
-          </div>
+        {inSetup && (
+          <p className="max-w-[min(640px,calc(100dvw-2rem))] text-center text-sm text-muted-foreground">
+            Choose a pit on your side, sow its stones counter-clockwise, and finish with more stones in
+            your store. Press Start game to begin.
+          </p>
         )}
 
-        {/* Loading State */}
-        {isStartingGame && (
-          <div className="mx-auto max-w-4xl">
-            <div className="flex flex-col items-center gap-4 rounded-2xl bg-card p-12 shadow-lg duration-300 animate-in fade-in zoom-in">
-              <div className="h-12 w-12 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-              <p className="text-lg font-semibold">Setting up the board...</p>
-            </div>
-          </div>
+        {!inSetup && settings.showGameStats && (
+          <GameStatistics
+            gameState={gameState}
+            gameStartTime={gameStartTime}
+            highestCaptureThisGame={highestCaptureThisGame}
+          />
         )}
 
-        {/* Game Board */}
-        {gameState.status !== 'setup' && !isStartingGame && (
-          <>
-            <Board
-              board={gameState.board}
-              currentPlayer={gameState.currentPlayer}
-              validMoves={getValidMovesForCurrentPlayer()}
-              onPitClick={handleMakeMove}
-              isAIThinking={isAIThinking}
-              isAnimating={isAnimating}
-              playerName={playerName}
-              gameMode={gameState.mode}
-              activePit={activePit}
-              isReducedMotion={isReducedMotion}
-            />
-
-            {/* Game Statistics */}
-            {settings.showGameStats && (
-              <GameStatistics
-                gameState={gameState}
-                gameStartTime={gameStartTime}
-                highestCaptureThisGame={highestCaptureThisGame}
-              />
-            )}
-
-            {/* Move History */}
-            {settings.showMoveHistory && (
-              <MoveHistory gameState={gameState} playerName={playerName} />
-            )}
-          </>
+        {!inSetup && settings.showMoveHistory && (
+          <MoveHistory gameState={gameState} playerName={playerName} opponentName={character.name} />
         )}
 
-        {/* Welcome Message */}
-        {gameState.status === 'setup' && (
-          <div className="mx-auto mt-12 max-w-2xl">
-            <div className="space-y-6 rounded-2xl bg-card p-8 shadow-lg border-2 border-primary/20">
-              <div className="space-y-4 text-center">
-                <div className="flex justify-center">
-                  <MancalaLogo size={120} className="drop-shadow-lg" />
-                </div>
-                <h2 className="text-3xl font-bold">Welcome to Mancala!</h2>
-                <p className="text-base text-muted-foreground">
-                  A classic board game of strategy and skill
-                </p>
-              </div>
-
-              {/* Goal Section - Most Prominent */}
-              <div className="rounded-xl border-4 border-green-500/70 bg-gradient-to-br from-green-500/20 to-emerald-500/20 p-6 shadow-lg">
-                <div className="text-center space-y-3">
-                  <div className="text-5xl animate-bounce-subtle">🏆</div>
-                  <h3 className="text-2xl font-bold text-green-600 dark:text-green-400">
-                    Goal: Capture More Stones!
-                  </h3>
-                  <p className="text-base font-medium">
-                    Collect more stones in your <span className="text-green-600 dark:text-green-400 font-bold">STORE</span> (large pit on right) than your opponent
-                  </p>
-                </div>
-              </div>
-
-              {/* How to Play - Simplified */}
-              <div className="space-y-4 rounded-lg bg-muted/50 p-5">
-                <h3 className="text-lg font-bold text-center flex items-center justify-center gap-2">
-                  <span className="text-2xl">⚡</span>
-                  How to Play in 3 Steps
-                </h3>
-                <div className="space-y-3">
-                  <div className="flex items-start gap-3 rounded-lg bg-background/80 p-3 border-l-4 border-blue-500">
-                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-500 text-sm font-bold text-white">1</span>
-                    <div>
-                      <p className="font-bold">Pick a Pit</p>
-                      <p className="text-sm text-muted-foreground">Click any pit on YOUR side (bottom) to pick up all stones</p>
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-3 rounded-lg bg-background/80 p-3 border-l-4 border-purple-500">
-                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-purple-500 text-sm font-bold text-white">2</span>
-                    <div>
-                      <p className="font-bold">Drop Stones Counter-Clockwise</p>
-                      <p className="text-sm text-muted-foreground">Stones drop one by one, going right → up → left → down</p>
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-3 rounded-lg bg-background/80 p-3 border-l-4 border-amber-500">
-                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-amber-500 text-sm font-bold text-white">3</span>
-                    <div>
-                      <p className="font-bold">Collect More Stones Than Opponent!</p>
-                      <p className="text-sm text-muted-foreground">Game ends when one side is empty - highest score wins!</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Special Moves */}
-              <div className="space-y-3 rounded-lg border-2 border-primary/30 bg-primary/5 p-4">
-                <h3 className="text-base font-bold text-center">✨ Special Moves to Master</h3>
-                <div className="grid gap-2 text-sm">
-                  <div className="flex items-center gap-2 bg-background/50 p-2 rounded">
-                    <span className="text-xl">🔄</span>
-                    <span><strong>Extra Turn:</strong> Last stone lands in YOUR store? Go again!</span>
-                  </div>
-                  <div className="flex items-center gap-2 bg-background/50 p-2 rounded">
-                    <span className="text-xl">💎</span>
-                    <span><strong>Capture:</strong> Last stone in empty pit on your side? Steal opposite stones!</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="pt-2 grid gap-3 sm:grid-cols-2">
-                <Button
-                  onClick={() => setShowHowToPlay(true)}
-                  variant="outline"
-                  size="lg"
-                  className="gap-2"
-                >
-                  <QuestionMarkCircledIcon className="h-5 w-5" />
-                  Full Rules
-                </Button>
-                <Button
-                  onClick={() => setShowTutorial(true)}
-                  variant="default"
-                  size="lg"
-                  className="gap-2 shadow-lg"
-                >
-                  <QuestionMarkCircledIcon className="h-5 w-5" />
-                  Interactive Tutorial
-                </Button>
-              </div>
-              <p className="text-sm font-medium text-center text-primary">
-                💡 First time? Try the interactive tutorial!
-              </p>
-            </div>
-          </div>
-        )}
-
-        {/* Move Indicator */}
-        {gameState.status === 'playing' && gameState.lastMove && (
-          <div className="mx-auto max-w-4xl">
-            <div className="rounded-lg bg-card/50 p-4 text-center text-sm backdrop-blur duration-300 animate-in fade-in slide-in-from-top-2">
-              {gameState.lastMove.extraTurn && (
-                <span className="font-semibold text-primary">Extra turn! </span>
-              )}
-              {gameState.lastMove.capturedStones && (
-                <span className="font-semibold text-green-600 dark:text-green-400">
-                  Captured {gameState.lastMove.capturedStones} stones! 🎉
-                </span>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Copy Notification */}
         {showCopyNotification && (
-          <div className="fixed bottom-4 right-4 z-50 rounded-lg bg-primary px-4 py-3 text-primary-foreground shadow-lg duration-300 animate-in slide-in-from-bottom-4">
-            <div className="flex items-center gap-2">
-              <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
-                <path
-                  fillRule="evenodd"
-                  d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                  clipRule="evenodd"
-                />
-              </svg>
-              <span>Copied to clipboard!</span>
-            </div>
+          <div className="fixed bottom-4 right-4 z-50 rounded-lg border bg-card px-4 py-3 text-sm text-foreground shadow-lg">
+            Copied to clipboard
           </div>
         )}
-      </div>
+      </main>
 
       {/* Victory Dialog */}
+      {showVictory && (
       <VictoryDialog
         open={showVictory}
         onOpenChange={setShowVictory}
@@ -667,9 +569,9 @@ export default function MancalaGame() {
         gameDuration={Math.floor((Date.now() - gameStartTime) / 1000)}
         highestCapture={highestCaptureThisGame}
         onNewGame={handleNewGame}
-        onShare={handleShare}
         character={gameState.mode === 'vsAI' ? character : undefined}
       />
+      )}
 
       {/* Leaderboard Dialog */}
       <LeaderboardDialog
@@ -691,11 +593,22 @@ export default function MancalaGame() {
       {/* How to Play Dialog */}
       <HowToPlayDialog
         open={showHowToPlay}
-        onOpenChange={setShowHowToPlay}
+        onOpenChange={open => {
+          setShowHowToPlay(open)
+          if (!open) setWelcomeOpen(false)
+        }}
         onStartTutorial={() => {
           setShowHowToPlay(false)
           setShowTutorial(true)
         }}
+        onStartPlaying={
+          welcomeOpen
+            ? () => {
+                setShowHowToPlay(false)
+                if (gameState.status === 'setup') handleStartGame()
+              }
+            : undefined
+        }
       />
 
       {/* Keyboard Shortcuts Dialog */}
@@ -726,9 +639,6 @@ export default function MancalaGame() {
 
       {/* Achievement Toast */}
       <AchievementToast achievement={recentlyUnlocked} />
-
-      {/* Confetti Celebration */}
-      <Confetti active={showConfetti} duration={3000} />
     </div>
   )
 }

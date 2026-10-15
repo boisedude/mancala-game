@@ -16,7 +16,6 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import type { AnimationSpeed, HintLevel, GameSettings } from '@/hooks/useGameSettings'
-import { ResetIcon } from '@radix-ui/react-icons'
 
 interface SettingsDialogProps {
   open: boolean
@@ -35,18 +34,18 @@ export function SettingsDialog({
 }: SettingsDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle className="text-2xl">Game Settings</DialogTitle>
+          <DialogTitle className="text-xl">Settings</DialogTitle>
           <DialogDescription>
-            Customize your Mancala gameplay experience
+            Animation, display and feedback
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6 py-4">
-          {/* Animation Speed */}
+          {/* Animation speed */}
           <div className="space-y-2">
-            <label htmlFor="animation-speed" className="text-sm font-semibold">Animation Speed</label>
+            <label htmlFor="animation-speed" className="text-sm font-semibold">Animation speed</label>
             <p className="text-xs text-muted-foreground">
               Control how fast stones move during gameplay
             </p>
@@ -56,43 +55,31 @@ export function SettingsDialog({
                 onUpdateSetting('animationSpeed', value)
               }
             >
-              <SelectTrigger id="animation-speed" className="w-full" aria-label="Select animation speed">
+              <SelectTrigger id="animation-speed" className="h-11 w-full" aria-label="Select animation speed">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="off">
-                  <div className="flex items-center gap-2">
-                    <span>⚡</span>
-                    <span>Off (Instant)</span>
-                  </div>
+                  Off (Instant)
                 </SelectItem>
                 <SelectItem value="fast">
-                  <div className="flex items-center gap-2">
-                    <span>🐇</span>
-                    <span>Fast (75ms)</span>
-                  </div>
+                  Fast (75ms)
                 </SelectItem>
                 <SelectItem value="normal">
-                  <div className="flex items-center gap-2">
-                    <span>🚶</span>
-                    <span>Normal (150ms)</span>
-                  </div>
+                  Normal (150ms)
                 </SelectItem>
                 <SelectItem value="slow">
-                  <div className="flex items-center gap-2">
-                    <span>🐢</span>
-                    <span>Slow (300ms)</span>
-                  </div>
+                  Slow (300ms)
                 </SelectItem>
               </SelectContent>
             </Select>
           </div>
 
-          {/* Move Hints */}
+          {/* Move hints */}
           <div className="space-y-2">
-            <label htmlFor="move-hints" className="text-sm font-semibold">Move Hints</label>
+            <label htmlFor="move-hints" className="text-sm font-semibold">Move hints</label>
             <p className="text-xs text-muted-foreground">
-              Get suggestions for your next move (coming soon)
+              Get suggestions for your next move 
             </p>
             <Select
               value={settings.showMoveHints}
@@ -100,7 +87,7 @@ export function SettingsDialog({
                 onUpdateSetting('showMoveHints', value)
               }
             >
-              <SelectTrigger id="move-hints" className="w-full" aria-label="Select hint level">
+              <SelectTrigger id="move-hints" className="h-11 w-full" aria-label="Select hint level">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -113,13 +100,13 @@ export function SettingsDialog({
 
           {/* Toggle Options */}
           <div className="space-y-4 border-t pt-4">
-            <h3 className="text-sm font-semibold">Display Options</h3>
+            <h3 className="text-sm font-semibold">Display</h3>
 
-            <label className="flex items-center justify-between cursor-pointer group">
+            <label className="flex min-h-11 cursor-pointer items-center justify-between">
               <div className="space-y-0.5">
-                <div className="text-sm font-medium" id="stats-label">Game Statistics</div>
+                <div className="text-sm font-medium" id="stats-label">Game statistics</div>
                 <div className="text-xs text-muted-foreground">
-                  Show real-time stats during gameplay
+                  Show a line of running stats under the board
                 </div>
               </div>
               <div className="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-primary">
@@ -132,14 +119,14 @@ export function SettingsDialog({
                   role="switch"
                   aria-checked={settings.showGameStats}
                 />
-                <div className="h-6 w-11 rounded-full bg-muted peer-checked:bg-primary transition-colors" />
-                <div className="absolute left-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform peer-checked:translate-x-5" />
+                <div className="h-6 w-11 rounded-full bg-border peer-checked:bg-primary transition-colors" />
+                <div className="absolute left-0.5 h-5 w-5 rounded-full bg-foreground shadow transition-transform peer-checked:translate-x-5" />
               </div>
             </label>
 
-            <label className="flex items-center justify-between cursor-pointer group">
+            <label className="flex min-h-11 cursor-pointer items-center justify-between">
               <div className="space-y-0.5">
-                <div className="text-sm font-medium" id="history-label">Move History</div>
+                <div className="text-sm font-medium" id="history-label">Move history</div>
                 <div className="text-xs text-muted-foreground">
                   Show a timeline of all moves made
                 </div>
@@ -154,36 +141,14 @@ export function SettingsDialog({
                   role="switch"
                   aria-checked={settings.showMoveHistory}
                 />
-                <div className="h-6 w-11 rounded-full bg-muted peer-checked:bg-primary transition-colors" />
-                <div className="absolute left-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform peer-checked:translate-x-5" />
+                <div className="h-6 w-11 rounded-full bg-border peer-checked:bg-primary transition-colors" />
+                <div className="absolute left-0.5 h-5 w-5 rounded-full bg-foreground shadow transition-transform peer-checked:translate-x-5" />
               </div>
             </label>
 
-            <label className="flex items-center justify-between cursor-pointer group">
+            <label className="flex min-h-11 cursor-pointer items-center justify-between">
               <div className="space-y-0.5">
-                <div className="text-sm font-medium" id="celebration-label">Victory Celebrations</div>
-                <div className="text-xs text-muted-foreground">
-                  Show confetti and effects when you win
-                </div>
-              </div>
-              <div className="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-primary">
-                <input
-                  type="checkbox"
-                  className="peer sr-only"
-                  checked={settings.showVictoryCelebration}
-                  onChange={e => onUpdateSetting('showVictoryCelebration', e.target.checked)}
-                  aria-labelledby="celebration-label"
-                  role="switch"
-                  aria-checked={settings.showVictoryCelebration}
-                />
-                <div className="h-6 w-11 rounded-full bg-muted peer-checked:bg-primary transition-colors" />
-                <div className="absolute left-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform peer-checked:translate-x-5" />
-              </div>
-            </label>
-
-            <label className="flex items-center justify-between cursor-pointer group">
-              <div className="space-y-0.5">
-                <div className="text-sm font-medium" id="haptic-label">Haptic Feedback (Mobile)</div>
+                <div className="text-sm font-medium" id="haptic-label">Haptic feedback</div>
                 <div className="text-xs text-muted-foreground">
                   Vibrate on interactions (requires mobile device)
                 </div>
@@ -198,22 +163,16 @@ export function SettingsDialog({
                   role="switch"
                   aria-checked={settings.hapticFeedback}
                 />
-                <div className="h-6 w-11 rounded-full bg-muted peer-checked:bg-primary transition-colors" />
-                <div className="absolute left-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform peer-checked:translate-x-5" />
+                <div className="h-6 w-11 rounded-full bg-border peer-checked:bg-primary transition-colors" />
+                <div className="absolute left-0.5 h-5 w-5 rounded-full bg-foreground shadow transition-transform peer-checked:translate-x-5" />
               </div>
             </label>
           </div>
 
           {/* Reset Button */}
           <div className="border-t pt-4">
-            <Button
-              onClick={onReset}
-              variant="outline"
-              className="w-full gap-2"
-              type="button"
-            >
-              <ResetIcon className="h-4 w-4" />
-              Reset to Defaults
+            <Button onClick={onReset} variant="outline" className="h-11" type="button">
+              Reset to defaults
             </Button>
           </div>
         </div>

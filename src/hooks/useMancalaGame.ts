@@ -22,14 +22,17 @@ const AI_THINKING_TIME = {
   HARD_VARIANCE: 400,
 } as const
 
-export function useMancalaGame(animationDelayMs: number = 150) {
+export function useMancalaGame(
+  animationDelayMs: number = 150,
+  initialDifficulty: Difficulty = 'medium'
+) {
   const [gameState, setGameState] = useState<GameState>({
     board: createInitialBoard(),
     currentPlayer: 1,
     status: 'setup',
     winner: null,
     mode: 'vsAI',
-    difficulty: 'medium',
+    difficulty: initialDifficulty,
     moveHistory: [],
     lastMove: null,
     undoState: null,
