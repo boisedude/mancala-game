@@ -1,6 +1,6 @@
 // Main Mancala game page
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { Board } from '@/components/Board'
 import { GameControls } from '@/components/GameControls'
 import { LeaderboardDialog } from '@/components/LeaderboardDialog'
@@ -26,7 +26,6 @@ import { useAchievements } from '@/hooks/useAchievements'
 import { useGameSettings } from '@/hooks/useGameSettings'
 import { useHapticFeedback } from '@/hooks/useHapticFeedback'
 import { useCharacterSelection, getCharacterIdFromUrl, getDifficultyFromUrl } from '@/hooks/useCharacterSelection'
-import { recordPlayerBeatBentley, recordBentleyBeatPlayer } from '@shared/arcadeRecord'
 import { AchievementToast } from '@/components/AchievementToast'
 import { P1_STORE, P2_STORE } from '@/lib/mancalaRules'
 import { STORAGE_KEYS } from '@/lib/storageKeys'
@@ -56,8 +55,7 @@ export default function MancalaGame() {
   const { isMuted, toggleMute, playSound } = useGameAudio()
   const { saveGame, loadGame, clearSavedGame, abandonGame } = useGamePersistence()
   const { isReducedMotion } = useReducedMotion()
-  const { character, characterId } = useCharacterSelection(gameState.difficulty)
-  const arcadeRecordPostedRef = useRef(false)
+  const { character } = useCharacterSelection(gameState.difficulty)
   const {
     recentlyUnlocked,
     trackCapture,
@@ -228,7 +226,6 @@ export default function MancalaGame() {
   useEffect(() => {
     if (gameState.status === 'playing') {
       setGameOverHandled(false)
-      arcadeRecordPostedRef.current = false
     }
   }, [gameState.status])
 
@@ -253,21 +250,6 @@ export default function MancalaGame() {
       }
 
       recordGame(playerWon, gameDuration, highestCaptureThisGame)
-
-      // Arcade-wide Bentley record: vs-AI games against Bentley with a decisive result, once per game
-      if (
-        gameState.mode === 'vsAI' &&
-        characterId === 'bentley' &&
-        gameState.winner !== null &&
-        !arcadeRecordPostedRef.current
-      ) {
-        arcadeRecordPostedRef.current = true
-        if (playerWon) {
-          void recordPlayerBeatBentley()
-        } else {
-          void recordBentleyBeatPlayer()
-        }
-      }
 
       // Track game result for achievements
       trackGameResult(playerWon, gameDuration, opponentScore, maxDeficitThisGame)
@@ -296,7 +278,6 @@ export default function MancalaGame() {
     gameState.mode,
     gameState.winner,
     gameOverHandled,
-    characterId,
     character,
     recordGame,
     trackGameResult,
