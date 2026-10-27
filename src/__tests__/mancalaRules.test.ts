@@ -701,7 +701,7 @@ describe('mancalaRules', () => {
 
     it('should handle game that ends in a tie', () => {
       // Each player has exactly 24 stones total
-      let board: Board = {
+      const board: Board = {
         pits: [1, 0, 0, 0, 0, 0, 23, 0, 0, 0, 0, 0, 1, 23],
       }
 

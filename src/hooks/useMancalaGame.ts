@@ -228,6 +228,8 @@ export function useMancalaGame(
    * Undo the last player move
    */
   const undoMove = useCallback(() => {
+    // A move being sown cannot be taken back; the sowing would overwrite the restored board
+    if (isAnimating) return
     setGameState(prev => {
       if (!prev.undoState) return prev
       if (prev.status !== 'playing') return prev
@@ -238,10 +240,12 @@ export function useMancalaGame(
         board: prev.undoState.board,
         currentPlayer: prev.undoState.currentPlayer,
         lastMove: prev.undoState.lastMove,
+        // Drop the undone move from the history so counts and the move list stay in step
+        moveHistory: prev.moveHistory.slice(0, -1),
         undoState: null, // Clear undo state after using it
       }
     })
-  }, [])
+  }, [isAnimating])
 
   /**
    * AI makes a move (triggered by useEffect) with animation

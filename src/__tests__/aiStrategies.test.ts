@@ -6,7 +6,6 @@ import {
   executeMove,
   getValidMoves,
   isGameOver,
-  P1_STORE,
   P2_STORE,
 } from '@/lib/mancalaRules'
 import type { Board, Difficulty } from '@/types/mancala.types'

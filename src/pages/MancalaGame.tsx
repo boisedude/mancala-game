@@ -14,6 +14,7 @@ import { SettingsDialog } from '@/components/SettingsDialog'
 import { GameStatistics } from '@/components/GameStatistics'
 import { MoveHistory } from '@/components/MoveHistory'
 import { OpponentChip } from '@/components/OpponentChip'
+import { ConfirmSwitchDialog } from '@/components/ConfirmSwitchDialog'
 import { Button } from '@/components/ui/button'
 import { useMancalaGame } from '@/hooks/useMancalaGame'
 import { useLeaderboard } from '@/hooks/useLeaderboard'
@@ -30,7 +31,7 @@ import { AchievementToast } from '@/components/AchievementToast'
 import { P1_STORE, P2_STORE } from '@/lib/mancalaRules'
 import { STORAGE_KEYS } from '@/lib/storageKeys'
 import { UI_TIMING } from '@/lib/constants'
-import type { Difficulty } from '@/types/mancala.types'
+import type { Difficulty, GameMode } from '@/types/mancala.types'
 import { ArrowLeftIcon, VolumeIcon, VolumeOffIcon, HelpIcon } from '@shared/icons'
 import type { SavedGame } from '@/hooks/useGamePersistence'
 
@@ -47,8 +48,6 @@ export default function MancalaGame() {
     makeMove,
     undoMove,
     resetGame,
-    setDifficulty,
-    setMode,
     getValidMovesForCurrentPlayer,
     restoreGameState,
   } = useMancalaGame(getAnimationDelay(), initialDifficulty)
@@ -87,7 +86,15 @@ export default function MancalaGame() {
   // Check for saved game on mount
   useEffect(() => {
     const saved = loadGame()
-    if (saved) {
+    // ?character= decides the opponent. A saved game against someone else is not offered,
+    // so the opponent shown always matches the link the player followed.
+    const urlDifficulty = getDifficultyFromUrl()
+    const matchesLink =
+      !saved ||
+      saved.gameState.mode !== 'vsAI' ||
+      urlDifficulty === null ||
+      saved.gameState.difficulty === urlDifficulty
+    if (saved && matchesLink) {
       setSavedGameData(saved)
       setShowContinueDialog(true)
     }
@@ -320,18 +327,39 @@ export default function MancalaGame() {
     }, UI_TIMING.START_GAME_DELAY)
   }
 
-  const handleDifficultyChange = (difficulty: Difficulty) => {
-    setDifficulty(difficulty)
-    if (gameState.status !== 'playing') {
-      startGame(gameState.mode, difficulty)
+  // A change of opponent or mode always starts a fresh game. When a game is in
+  // progress the player confirms first, so the opponent can never change under a
+  // running game (which would let a Bentley result be claimed from a Bella game).
+  type PendingSwitch = { mode: GameMode; difficulty: Difficulty; title: string }
+  const [pendingSwitch, setPendingSwitch] = useState<PendingSwitch | null>(null)
+
+  const requestSwitch = (mode: GameMode, difficulty: Difficulty, title: string) => {
+    if (mode === gameState.mode && difficulty === gameState.difficulty) return
+    const inProgress = gameState.status === 'playing' && gameState.moveHistory.length > 0
+    if (inProgress) {
+      setPendingSwitch({ mode, difficulty, title })
+      return
     }
+    applySwitch(mode, difficulty)
   }
 
-  const handleModeChange = (mode: 'vsAI' | 'vsHuman' | 'tutorial') => {
-    setMode(mode)
-    if (gameState.status !== 'playing') {
-      startGame(mode, gameState.difficulty)
-    }
+  const applySwitch = (mode: GameMode, difficulty: Difficulty) => {
+    setShowVictory(false)
+    clearSavedGame()
+    startGame(mode, difficulty)
+  }
+
+  const handleDifficultyChange = (difficulty: Difficulty) => {
+    const name = { easy: 'Bella', medium: 'Coop', hard: 'Bentley' }[difficulty]
+    requestSwitch(gameState.mode, difficulty, `Play ${name} instead?`)
+  }
+
+  const handleModeChange = (mode: GameMode) => {
+    requestSwitch(
+      mode,
+      gameState.difficulty,
+      mode === 'vsHuman' ? 'Switch to two players?' : `Play ${character.name} instead?`
+    )
   }
 
   const handleShare = () => {
@@ -626,6 +654,16 @@ export default function MancalaGame() {
         playerName={playerName}
         onContinue={handleContinueGame}
         onNewGame={handleAbandonGame}
+      />
+
+      <ConfirmSwitchDialog
+        open={pendingSwitch !== null}
+        title={pendingSwitch?.title ?? ''}
+        onConfirm={() => {
+          if (pendingSwitch) applySwitch(pendingSwitch.mode, pendingSwitch.difficulty)
+          setPendingSwitch(null)
+        }}
+        onCancel={() => setPendingSwitch(null)}
       />
 
       {/* Settings Dialog */}

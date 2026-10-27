@@ -92,8 +92,8 @@ export function Board({
 
   return (
     <div className="w-full">
-      <div className="arcade-board mx-auto rounded-2xl border-[5px] border-[#5c3d21] bg-[#7a5230] p-1.5 sm:border-[7px] sm:p-3">
-        <div className="grid grid-cols-[2rem_repeat(6,minmax(0,1fr))_2rem] grid-rows-2 gap-x-[3px] gap-y-2 sm:grid-cols-[4.5rem_repeat(6,minmax(0,1fr))_4.5rem] sm:gap-x-2 sm:gap-y-3">
+      <div className="arcade-board mx-auto rounded-2xl border-[3px] border-[#5c3d21] bg-[#7a5230] p-1 sm:border-[7px] sm:p-3">
+        <div className="grid grid-cols-[1.75rem_repeat(6,minmax(0,1fr))_1.75rem] grid-rows-2 gap-x-[2px] gap-y-2 sm:grid-cols-[4.5rem_repeat(6,minmax(0,1fr))_4.5rem] sm:gap-x-2 sm:gap-y-3">
           <Store
             className="col-start-1 row-span-2 row-start-1"
             stones={board.pits[P2_STORE]}
